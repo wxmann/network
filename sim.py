@@ -2,6 +2,27 @@ from random import random, sample, choice
 
 DEBUG = True
 
+"""
+Independent variables
+1-3 <---> strength of connections in the graph
+4 <--> compellingness of content transmitted through the graph which decays with time
+
+1. p_ack: likelihood of being receptive to content in network
+    (static, property of graph, varies between differet nodes)
+2. p_connect_back: strength of connections in network  
+    (static, property of graph, varies between different nodes)
+3. connect_factor: likelihood of finding "friends" in network. Breadth of network
+    (static, property of graph, varies between different nodes)
+4. p_rebroadcast: compellingness of content transmitted through network    
+    (by message, time-dependent)
+
+Types of Curves
+p_ack depends on connect_factor (more friends)
+connect_factor looks like beta(alpha=1, beta=3) (exponentially decreasing)
+p_connect_back looks like normally distributed RV
+p_rebroadcast is  also normally distributed
+"""
+
 def create_network(n_nodes):
     # for now, hard code this
     p_ack = 0.35
