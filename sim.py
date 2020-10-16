@@ -1,6 +1,6 @@
-from random import random, sample, choice
+from random import random, choice
 
-DEBUG = True
+DEBUG = False
 
 """
 Independent variables
@@ -23,23 +23,21 @@ p_connect_back looks like normally distributed RV
 p_rebroadcast is  also normally distributed
 """
 
-def create_network(n_nodes):
-    # for now, hard code this
-    p_ack = 0.35
-    p_connect_back = 0.6
-    connect_factor = 20
+
+def create_network(n_nodes, param_generator):
     nodes = []
 
     for i in range(n_nodes):
-        node = Node(i, p_ack, p_connect_back)
+        p_ack, p_connect_back, connect_factor = param_generator(n_nodes)
+        # trace({'p_ack': p_ack, 'p_connect_back': p_connect_back, 'connect_factor': connect_factor})
+        node = Node(i, p_ack, p_connect_back, connect_factor)
         nodes.append(node)
 
+    network = Network(nodes)
     for node in nodes:
-        nodes_to_follow = sample(nodes, connect_factor)
-        for node_to_follow in nodes_to_follow:
-            node.connect(node_to_follow)
+        node.obtain_connections(network)
 
-    return Network(nodes)
+    return network
 
 
 def trace(thing):
@@ -56,15 +54,21 @@ class Network:
         msg = Message(id=self.step_index, p_rebroadcast=0.2)
         choice(self.nodes).broadcast(msg)
         self.step_index += 1
+        return msg
         
 
 class Node:
-    def __init__(self, index, p_ack, p_connect_back):
+    def __init__(self, index, p_ack, p_connect_back, connect_factor):
         self.index = index
         self.p_ack = p_ack
         self.p_connect_back = p_connect_back
+        self.connect_factor = connect_factor
         self.following = set()
         self.followed_by = set()
+
+    def obtain_connections(self, network):
+        while len(self.following) < self.connect_factor:
+            self.connect(choice(network.nodes))
 
     def connect(self, other_node):
         if other_node in self.following:
@@ -87,7 +91,7 @@ class Node:
             node.receive(msg)
 
     def __hash__(self):
-        return hash((self.index))
+        return hash(self.index)
 
     def __str__(self):
         return f'<Node index {self.index}, p_ack {self.p_ack}>'
@@ -107,17 +111,13 @@ class Message:
         return node in self.broadcasted_nodes
 
     def track_received_by(self, node):
-        trace(f'msg {str(self)} received by node {str(node)}')
+        # trace(f'msg {str(self)} received by node {str(node)}')
         self.received_nodes.add(node)
 
     def track_broadcast_by(self, node):
-        trace(f'msg {str(self)} broadcasted by node {str(node)}')
+        # trace(f'msg {str(self)} broadcasted by node {str(node)}')
         self.broadcasted_nodes.add(node)
 
     def __str__(self):
         return f'<Message, id: {self.id} received by {len(self.received_nodes)} nodes, broadcasted by {len(self.broadcasted_nodes)} nodes>'
 
-
-if __name__ == '__main__':
-    network = create_network(2000)
-    network.step()
