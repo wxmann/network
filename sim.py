@@ -1,3 +1,4 @@
+from collections import namedtuple
 from random import random, choice, sample
 
 DEBUG = False
@@ -45,8 +46,9 @@ class Network:
     def step(self, p_rebroadcast=None):
         if p_rebroadcast is None:
             p_rebroadcast = self.param_generator.p_rebroadcast()
-        msg = Message(id=self.step_index, p_rebroadcast=p_rebroadcast)
-        choice(self.nodes).broadcast(msg)
+        originating_node = choice(self.nodes)
+        msg = Message(self.step_index, p_rebroadcast, originating_node)
+        originating_node.broadcast(msg)
         self.step_index += 1
         return msg
 
@@ -55,17 +57,7 @@ class Network:
         return msgs
 
 
-class Edge:
-    def __init__(self, from_node, to_node, strength):
-        self.from_node = from_node
-        self.to_node = to_node
-        self.strength = strength
-
-    def transmit(self, msg):
-        if test(self.strength):
-            self.to_node.ack(msg)
-            return True
-        return False
+Edge = namedtuple('Edge', ['to', 'strength'])
 
 
 class Node:
@@ -83,10 +75,11 @@ class Node:
     def broadcast(self, msg):
         msg.track_broadcast_by(self)
         for edge in self.edges:
-            edge.transmit(msg)
+            if test(edge.strength):
+                edge.to.ack(msg)
 
     def follow(self, node, strength):
-        node.edges.add(Edge(node, self, strength))
+        node.edges.add(Edge(to=self, strength=strength))
         node.followers.add(self)
 
     def __hash__(self):
@@ -97,10 +90,11 @@ class Node:
 
 
 class Message:
-    def __init__(self, id, p_rebroadcast):
+    def __init__(self, id, p_rebroadcast, originating_node):
         self.id = id
         self.p_rebroadcast = p_rebroadcast
         self.broadcasted_nodes = set()
+        self.originating_node = originating_node
 
     def is_broadcasted_by(self,  node):
         return node in self.broadcasted_nodes
