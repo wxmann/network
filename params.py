@@ -30,10 +30,10 @@ class DefaultParamGenerator(ParamGenerator):
     def __init__(self,
                  connect_beta_params=None,
                  base_p_ack=0.25,
-                 p_connect_back_fixed=0.65):
+                 p_connect_back_fixed=0.5):
         super().__init__()
         if connect_beta_params is None:
-            connect_beta_params = dict(alpha=1, beta=50)
+            connect_beta_params = dict(alpha=1, beta=100)
 
         self.connect_beta = partial(betavariate, **connect_beta_params)
         self.p_connect_back_fixed = p_connect_back_fixed

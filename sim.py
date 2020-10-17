@@ -34,8 +34,12 @@ def create_network(n_nodes, param_generator):
         nodes.append(node)
 
     network = Network(nodes)
+
     for node in nodes:
         node.obtain_connections(network)
+
+    for node in nodes:
+        node.evaluate_followers()
 
     return network
 
@@ -70,13 +74,16 @@ class Node:
         while len(self.following) < self.connect_factor:
             self.connect(choice(network.nodes))
 
+    def evaluate_followers(self):
+        for other_node in self.followed_by:
+            if random() < self.p_connect_back:
+                self.connect(other_node)
+
     def connect(self, other_node):
         if other_node in self.following:
             return
         self.following.add(other_node)
         other_node.followed_by.add(self)
-        if random() < other_node.p_connect_back:
-            other_node.connect(self)
 
     def receive(self, msg):
         if random() < self.p_ack and not msg.is_received_by(self):
