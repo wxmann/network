@@ -1,4 +1,4 @@
-from random import random, choice
+from random import random, choice, sample
 
 DEBUG = False
 
@@ -34,8 +34,8 @@ class Network:
             self.evaluate_followers_for(node)
 
     def onboard(self, node, n):
-        for _ in range(n):
-            node.follow(choice(self.nodes), self.param_generator.edge_strength())
+        for node_to_follow in sample(self.nodes, n):
+            node.follow(node_to_follow, self.param_generator.edge_strength())
 
     def evaluate_followers_for(self, node):
         for follower in node.followers:

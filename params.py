@@ -33,3 +33,12 @@ class ParamGenerator:
     def p_rebroadcast(self):
         return self._p_rebroadcast_func()
 
+
+def beta_params(mean, sd):
+    u = mean
+    s2 = sd ** 2
+    alpha = (-u ** 3 + u ** 2 - u * s2) / s2
+    beta = (u ** 3 - 2 * u ** 2 + u * s2 + u - s2) / s2
+    if alpha < 0 or beta < 0:
+        raise ValueError(f'cannot calculate alpha/beta for mean {mean} and sd {sd}')
+    return alpha, beta
