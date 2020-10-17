@@ -1,52 +1,35 @@
 from functools import partial
-from random import betavariate
+from random import betavariate, random
 
 
 class ParamGenerator:
-    def __init__(self):
-        self.n_nodes = None
-        self.connect_factor = None
-        self.p_ack = None
-        self.p_connect_back = None
-
-    def __call__(self, n_nodes):
-        self.n_nodes = n_nodes
-        self.generate_connect_factor()
-        self.generate_p_ack()
-        self.generate_p_connect_back()
-        return self.p_ack, self.p_connect_back, self.connect_factor
-
-    def generate_connect_factor(self):
-        raise NotImplementedError
-
-    def generate_p_ack(self):
-        raise NotImplementedError
-
-    def generate_p_connect_back(self):
-        raise NotImplementedError
-
-
-class DefaultParamGenerator(ParamGenerator):
     def __init__(self,
-                 connect_beta_params=None,
-                 base_p_ack=0.25,
-                 p_connect_back_fixed=0.5):
-        super().__init__()
-        if connect_beta_params is None:
-            connect_beta_params = dict(alpha=1, beta=100)
+                 follow_count=None,
+                 edge_strength=None,
+                 p_follow_back=None,
+                 p_rebroadcast=None):
+        self._follow_count_func = ParamGenerator._to_generator(follow_count)
+        self._edge_strength_func = ParamGenerator._to_generator(edge_strength)
+        self._p_follow_back_func = ParamGenerator._to_generator(p_follow_back)
+        self._p_rebroadcast_func = ParamGenerator._to_generator(p_rebroadcast)
 
-        self.connect_beta = partial(betavariate, **connect_beta_params)
-        self.p_connect_back_fixed = p_connect_back_fixed
-        self.base_p_ack = base_p_ack
+    @staticmethod
+    def _to_generator(arg):
+        if arg is None:
+            return random
+        if isinstance(arg, tuple) and len(arg) == 2:
+            return partial(betavariate, alpha=arg[0], beta=arg[1])
+        return lambda: arg
 
-    def generate_connect_factor(self):
-        self.connect_factor = int(round(self.n_nodes * self.connect_beta()))
+    def follow_count(self, n_nodes):
+        return int(round(self._follow_count_func() * n_nodes))
 
-    def generate_p_ack(self):
-        self.p_ack = self.base_p_ack + (1 - self.base_p_ack) * self.connect_factor / self.n_nodes
+    def edge_strength(self):
+        return self._edge_strength_func()
 
-    def generate_p_connect_back(self):
-        self.p_connect_back = self.p_connect_back_fixed
+    def p_follow_back(self):
+        return self._p_follow_back_func()
 
+    def p_rebroadcast(self):
+        return self._p_rebroadcast_func()
 
-defaults = DefaultParamGenerator()
