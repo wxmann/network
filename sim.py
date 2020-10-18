@@ -96,14 +96,19 @@ class Graph:
     def nodes(self):
         return self._nodes.keys()
 
+    @property
+    def structure(self):
+        return dict(self._nodes)
+
     def add_empty_node(self, index):
         self._nodes[index] = set()
 
     def contains(self, connection):
-        from_node, _ = connection
+        from_node, to_node = connection
         if from_node not in self._nodes:
             return False
-        return connection in self._nodes[from_node]
+        to_nodes = set(edge.to for edge in self._nodes[from_node])
+        return to_node in to_nodes
 
     def add_edge(self, connection, strength):
         if self.contains(connection):

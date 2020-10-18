@@ -1,5 +1,6 @@
 from functools import partial
 from random import betavariate, random
+import math
 
 
 class ParamGenerator:
@@ -22,7 +23,7 @@ class ParamGenerator:
         return lambda: arg
 
     def follow_count(self, n_nodes):
-        return int(round(self._follow_count_func() * n_nodes))
+        return int(math.ceil(self._follow_count_func() * n_nodes))
 
     def edge_strength(self):
         return self._edge_strength_func()
