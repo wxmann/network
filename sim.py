@@ -4,13 +4,6 @@ from random import random, choice, sample
 DEBUG = False
 
 
-def create_network(n_nodes, param_generator):
-    nodes = [Node(i) for i in range(n_nodes)]
-    network = Network(nodes, param_generator)
-    network.init_nodes()
-    return network
-
-
 def trace(thing):
     if DEBUG:
         print(thing)
@@ -21,93 +14,151 @@ def test(p):
     return random() < p
 
 
-class Network:
-    def __init__(self, nodes, param_generator):
-        self.nodes = nodes
+class Simulation:
+    @classmethod
+    def create(cls, n_nodes, param_generator):
+        graph = Graph()
+        for i in range(n_nodes):
+            graph.add_empty_node(i)
+        sim = cls(graph, param_generator)
+        sim.initialize()
+        return sim
+
+    def __init__(self, graph, param_generator):
+        self.graph = graph
         self.param_generator = param_generator
         self.step_index = 0
 
-    def init_nodes(self):
-        for node in self.nodes:
-            self.onboard(node, self.param_generator.follow_count(len(self.nodes)))
+    def initialize(self, param_generator=None):
+        if param_generator is not None:
+            self.param_generator = param_generator
+        graph_size = len(self.graph.nodes)
+        for node in self.graph.nodes:
+            self._build_edges(node, n=self.param_generator.follow_count(graph_size))
+        for node in self.graph.nodes:
+            self._evaluate_edges(node)
 
-        for node in self.nodes:
-            self.evaluate_followers_for(node)
+    def _build_edges(self, node, n):
+        if n > len(self.graph.nodes):
+            raise ValueError(f'Not enough nodes in graph to build {n} edges')
+        for node_to_follow in sample(self.graph.nodes, n):
+            self.graph.add_edge(connection=(node, node_to_follow),
+                                strength=self.param_generator.edge_strength())
 
-    def onboard(self, node, n):
-        for node_to_follow in sample(self.nodes, n):
-            node.follow(node_to_follow, self.param_generator.edge_strength())
+    def _evaluate_edges(self, node):
+        conns, = self.graph.connections(node)
+        for conn in conns:
+            if test(self.param_generator.p_follow_back()) and not self.graph.contains((node, conn)):
+                self.graph.add_edge(connection=(conn, node),
+                                    strength=self.param_generator.edge_strength())
 
-    def evaluate_followers_for(self, node):
-        for follower in node.followers:
-            if test(self.param_generator.p_follow_back()):
-                node.follow(follower, self.param_generator.edge_strength())
-
-    def step(self, p_rebroadcast=None):
+    def step(self, p_rebroadcast=None, originating_node=None):
         if p_rebroadcast is None:
             p_rebroadcast = self.param_generator.p_rebroadcast()
-        originating_node = choice(self.nodes)
+        if originating_node is None:
+            originating_node = choice(list(self.graph.nodes))
+
         msg = Message(self.step_index, p_rebroadcast, originating_node)
-        originating_node.broadcast(msg)
+        self.graph.submit(msg)
         self.step_index += 1
         return msg
 
-    def run(self, n, p_rebroadcast=None):
-        msgs = [self.step(p_rebroadcast) for _ in range(n)]
+    def run(self, n, **kw):
+        msgs = [self.step(**kw) for _ in range(n)]
         return msgs
 
 
-Edge = namedtuple('Edge', ['to', 'strength'])
+_Edge = namedtuple('Edge', ['to', 'strength'])
 
 
-class Node:
-    def __init__(self, index):
-        self.index = index
-        self.edges = set()
+class _Queue:
+    def __init__(self):
+        self._items = []
+        self._init_index = 0
+
+    def empty(self):
+        return self._init_index >= len(self._items)
+
+    def add(self, item):
+        self._items.append(item)
+
+    def remove(self):
+        item = self._items[self._init_index]
+        self._init_index += 1
+        return item
+
+
+class Graph:
+    def __init__(self):
+        self._nodes = {}
 
     @property
-    def followers(self):
-        return set(edge.to for edge in self.edges)
+    def nodes(self):
+        return self._nodes.keys()
 
-    def ack(self, msg):
-        if not msg.is_broadcasted_by(self) and test(msg.p_rebroadcast):
-            self.broadcast(msg)
-            return True
-        return False
+    def add_empty_node(self, index):
+        self._nodes[index] = set()
 
-    def broadcast(self, msg):
-        msg.track_broadcast_by(self)
-        for edge in self.edges:
-            if test(edge.strength):
-                edge.to.ack(msg)
+    def contains(self, connection):
+        from_node, _ = connection
+        if from_node not in self._nodes:
+            return False
+        return connection in self._nodes[from_node]
 
-    def follow(self, node, strength):
-        node.edges.add(Edge(to=self, strength=strength))
+    def add_edge(self, connection, strength):
+        if self.contains(connection):
+            raise ValueError(f'Connection {connection} already exists')
+        from_node, to_node = connection
+        if from_node not in self._nodes:
+            self.add_empty_node(from_node)
+        new_edge = _Edge(to=to_node, strength=strength)
+        self._nodes[from_node].add(new_edge)
 
-    def connections(self, deg):
-        assert deg >= 1
-        followers = list(self.followers)
-        traversed_nodes = set()
-        result = [followers]
+    def submit(self, msg):
+        if msg.originating_node not in self._nodes:
+            raise ValueError(f'Invalid originating node {msg.originating_node} for msg')
+        queue = _Queue()
+        queue.add(msg.originating_node)
+
+        while not queue.empty():
+            node_index = queue.remove()
+            msg.track_broadcast_by(node_index)
+            for edge in self._nodes[node_index]:
+                ack = test(edge.strength)
+                rebroadcast = not msg.is_broadcasted_by(edge.to) and test(msg.p_rebroadcast)
+                if ack and rebroadcast:
+                    queue.add(edge.to)
+        return msg
+
+    def _get_connections_for(self, node_index, predicate):
+        edges = self._nodes[node_index]
+        if not predicate:
+            predicate = lambda node: True
+        return [edge.to for edge in edges if predicate(edge.to)]
+
+    def connections(self, node_index, deg=1, predicate=None):
+        if node_index not in self._nodes:
+            raise ValueError(f'Node {node_index} not in this graph')
+        if deg < 1:
+            raise ValueError('Deg must be >= 1')
+
         deg_on = 1
+        tracked_conns = self._get_connections_for(node_index, predicate)
+        traversed_nodes = set(tracked_conns)
+        result = [tuple(tracked_conns)]
+
         while deg_on < deg:
-            next_deg_followers = []
-            for follower in followers:
-                followers_to_add = [node for node in follower.followers
-                                    if node not in traversed_nodes]
-                for node in followers_to_add:
-                    traversed_nodes.add(node)
-                next_deg_followers += followers_to_add
-            result.append(next_deg_followers)
-            followers = next_deg_followers
+            this_deg_conns = []
+            for tracked_conn in tracked_conns:
+                next_conns = [conn for conn in self._get_connections_for(tracked_conn, predicate)
+                              if conn not in traversed_nodes]
+                traversed_nodes.update(next_conns)
+                this_deg_conns += next_conns
             deg_on += 1
+            result.append(tuple(this_deg_conns))
+            tracked_conns = this_deg_conns
+
         return tuple(result)
-
-    def __hash__(self):
-        return hash(self.index)
-
-    def __str__(self):
-        return f'<Node index {self.index}>'
 
 
 class Message:
@@ -125,4 +176,3 @@ class Message:
 
     def __str__(self):
         return f'<Message, id: {self.id} broadcasted by {len(self.broadcasted_nodes)} nodes>'
-
