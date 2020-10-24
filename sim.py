@@ -6,9 +6,7 @@ from graph import Graph
 class Simulation:
     @classmethod
     def create(cls, n_nodes, param_generator):
-        graph = Graph()
-        for i in range(n_nodes):
-            graph.add_standalone_node(i)
+        graph = Graph(range(n_nodes))
         sim = cls(graph, param_generator)
         sim.initialize()
         return sim
@@ -35,7 +33,7 @@ class Simulation:
                                 strength=self.param_generator.edge_strength())
 
     def _evaluate_edges(self, node, symmetric_edges=True):
-        conns, = self.graph.connections(node)
+        conns = next(self.graph.children(node))
         for conn in conns:
             if test(self.param_generator.p_follow_back()) and not self.graph.contains_edge((conn, node)):
                 if symmetric_edges:

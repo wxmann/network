@@ -35,19 +35,15 @@ class _Queue:
 class Graph:
     _UNDEFINED_NODE = 'EMPTY'
 
-    def __init__(self):
+    def __init__(self, vertices=None):
         self._nodes = {}
+        if vertices:
+            for vertex in vertices:
+                self._nodes[vertex] = {}
 
     @property
     def nodes(self):
         return self._nodes.keys()
-
-    @property
-    def structure(self):
-        return dict(self._nodes)
-
-    def add_standalone_node(self, index):
-        self._nodes[index] = {}
 
     def contains_node(self, node):
         return node in self._nodes
@@ -64,18 +60,21 @@ class Graph:
             raise ValueError(f'Edge {edge} already exists')
         from_node, to_node = edge
         if not self.contains_node(from_node):
-            self.add_standalone_node(from_node)
+            self._nodes[from_node] = {}
         new_edge = _Edge(from_node, to_node, **attrs)
         self._nodes[from_node][to_node] = new_edge
+        if not self.contains_node(to_node):
+            self._nodes[to_node] = {}
 
     def get_edge_attrs(self, edge):
         if not self.contains_edge(edge):
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def bfs_traversal(self, from_node, take=None, skip_traversed=True):
-        if not self.contains_node(from_node):
+    def bfs_traversal(self, from_node, take=None):
+        if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
+
         queue = _Queue()
         queue.add(from_node)
         nodes_traversed = set()
@@ -85,38 +84,36 @@ class Graph:
             nodes_traversed.add(node_index)
             yield node_index
 
-            for to_node, edge in self._nodes[node_index].items():
-                skip_dup = to_node in nodes_traversed if skip_traversed else False
+            for to_node, edge in self._nodes.get(node_index, {}).items():
                 take_edge = take is None or take(edge)
-                if take_edge and not skip_dup:
+                if take_edge and to_node not in nodes_traversed:
                     queue.add(to_node)
 
-    def _get_connections_for(self, node_index, predicate):
-        to_nodes = self._nodes[node_index]
-        if not predicate:
-            predicate = lambda node: True
-        return [to_node for to_node in to_nodes if predicate(to_node)]
+    def _children_for(self, node_index, predicate):
+        return [node for node in self._nodes[node_index] if predicate(node)]
 
-    def connections(self, node_index, deg=1, predicate=None):
+    def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
         if not self.contains_node(node_index):
             raise ValueError(f'Node {node_index} does not exist in this graph')
         if deg < 1:
             raise ValueError('Deg must be >= 1')
+        if predicate is None:
+            predicate = lambda node: True
 
         deg_on = 1
-        tracked_conns = self._get_connections_for(node_index, predicate)
-        traversed_nodes = set(tracked_conns)
-        result = [tuple(tracked_conns)]
+        tracked_deg_nodes = self._children_for(node_index, predicate)
+        traversed_nodes = set(tracked_deg_nodes)
+        traversed_nodes.add(node_index)
+        yield tracked_deg_nodes
 
         while deg_on < deg:
-            this_deg_conns = []
-            for tracked_conn in tracked_conns:
-                next_conns = [conn for conn in self._get_connections_for(tracked_conn, predicate)
-                              if conn not in traversed_nodes]
-                traversed_nodes.update(next_conns)
-                this_deg_conns += next_conns
             deg_on += 1
-            result.append(tuple(this_deg_conns))
-            tracked_conns = this_deg_conns
+            this_deg_nodes = []
+            for parent in tracked_deg_nodes:
+                is_dup = lambda node: exclude_dups and node in traversed_nodes
+                this_deg_nodes += [node for node in self._children_for(parent, predicate)
+                                   if not is_dup(node)]
+                traversed_nodes.update(this_deg_nodes)
+            tracked_deg_nodes = this_deg_nodes
+            yield tracked_deg_nodes
 
-        return tuple(result)
