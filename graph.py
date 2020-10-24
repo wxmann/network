@@ -101,7 +101,7 @@ class Graph:
     def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
         if not self.contains_node(node_index):
             raise ValueError(f'Node {node_index} does not exist in this graph')
-        if deg < 1:
+        if deg is not None and deg < 1:
             raise ValueError('Deg must be >= 1')
 
         deg_on = 1
@@ -110,7 +110,7 @@ class Graph:
         traversed_nodes.add(node_index)
         yield tracked_deg_nodes
 
-        while deg_on < deg:
+        while deg is None or deg_on < deg:
             deg_on += 1
             this_deg_nodes = []
             for parent in tracked_deg_nodes:
@@ -120,4 +120,3 @@ class Graph:
                 traversed_nodes.update(this_deg_nodes)
             tracked_deg_nodes = this_deg_nodes
             yield tracked_deg_nodes
-

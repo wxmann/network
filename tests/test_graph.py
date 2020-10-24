@@ -68,6 +68,16 @@ class TestGraph(unittest.TestCase):
         _, second_deg_children = tuple(self.graph.children(1, deg=2, exclude_dups=True))
         self.assertTupleEqual(tuple(second_deg_children), (3,))
 
+    def test__should_return_empty_children_from_leaf_node(self):
+        children = next(self.graph.children(3))
+        self.assertTupleEqual(tuple(children), ())
+
+    def test__should_return_children_from_node_indefinitely_if_deg_is_None(self):
+        multichildren = self.graph.children(3, deg=None)
+        for _ in range(4):
+            children = next(multichildren)
+            self.assertTupleEqual(tuple(children), ())
+
     def test__should_create_a_graph_with_empty_nodes(self):
         graph = Graph(range(10))
         self.assertTupleEqual(tuple(graph.nodes), tuple(range(10)))
