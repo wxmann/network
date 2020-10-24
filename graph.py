@@ -36,10 +36,9 @@ class Graph:
     _UNDEFINED_NODE = 'EMPTY'
 
     def __init__(self, vertices=None):
-        self._nodes = {}
-        if vertices:
-            for vertex in vertices:
-                self._nodes[vertex] = {}
+        if vertices is None:
+            vertices = []
+        self._nodes = {vertex: {} for vertex in vertices}
 
     @property
     def nodes(self):
@@ -59,10 +58,13 @@ class Graph:
         if self.contains_edge(edge):
             raise ValueError(f'Edge {edge} already exists')
         from_node, to_node = edge
+
         if not self.contains_node(from_node):
             self._nodes[from_node] = {}
+
         new_edge = _Edge(from_node, to_node, **attrs)
         self._nodes[from_node][to_node] = new_edge
+
         if not self.contains_node(to_node):
             self._nodes[to_node] = {}
 
@@ -84,12 +86,16 @@ class Graph:
             nodes_traversed.add(node_index)
             yield node_index
 
-            for to_node, edge in self._nodes.get(node_index, {}).items():
+            for to_node in self._children_for(node_index):
+                edge = self._get_edge((node_index, to_node))
                 take_edge = take is None or take(edge)
-                if take_edge and to_node not in nodes_traversed:
+                is_dup = to_node in nodes_traversed
+                if take_edge and not is_dup:
                     queue.add(to_node)
 
-    def _children_for(self, node_index, predicate):
+    def _children_for(self, node_index, predicate=None):
+        if predicate is None:
+            predicate = lambda node: True
         return [node for node in self._nodes[node_index] if predicate(node)]
 
     def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
@@ -97,8 +103,6 @@ class Graph:
             raise ValueError(f'Node {node_index} does not exist in this graph')
         if deg < 1:
             raise ValueError('Deg must be >= 1')
-        if predicate is None:
-            predicate = lambda node: True
 
         deg_on = 1
         tracked_deg_nodes = self._children_for(node_index, predicate)
