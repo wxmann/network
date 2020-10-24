@@ -1,7 +1,6 @@
-from random import choice, sample
+from random import choice, sample, random
 
 from graph import Graph
-from helpers import test
 
 
 class Simulation:
@@ -9,7 +8,7 @@ class Simulation:
     def create(cls, n_nodes, param_generator):
         graph = Graph()
         for i in range(n_nodes):
-            graph.add_empty_node(i)
+            graph.add_standalone_node(i)
         sim = cls(graph, param_generator)
         sim.initialize()
         return sim
@@ -25,51 +24,48 @@ class Simulation:
         graph_size = len(self.graph.nodes)
         for node in self.graph.nodes:
             self._build_edges(node, n=self.param_generator.follow_count(graph_size))
-        for node in self.graph.nodes:
-            self._evaluate_edges(node)
+        # for node in self.graph.nodes:
+        #     self._evaluate_edges(node)
 
     def _build_edges(self, node, n):
         if n > len(self.graph.nodes):
             raise ValueError(f'Not enough nodes in graph to build {n} edges')
         for node_to_follow in sample(self.graph.nodes, n):
-            self.graph.add_edge(connection=(node, node_to_follow),
+            self.graph.add_edge(edge=(node, node_to_follow),
                                 strength=self.param_generator.edge_strength())
 
-    def _evaluate_edges(self, node):
+    def _evaluate_edges(self, node, symmetric_edges=True):
         conns, = self.graph.connections(node)
         for conn in conns:
-            if test(self.param_generator.p_follow_back()) and not self.graph.contains((node, conn)):
-                self.graph.add_edge(connection=(conn, node),
-                                    strength=self.param_generator.edge_strength())
+            if test(self.param_generator.p_follow_back()) and not self.graph.contains_edge((conn, node)):
+                if symmetric_edges:
+                    new_edge_strength = self.graph.get_edge_attrs((node, conn))['strength']
+                else:
+                    new_edge_strength = self.param_generator.edge_strength()
+                self.graph.add_edge(edge=(conn, node), strength=new_edge_strength)
 
     def step(self, p_rebroadcast=None, originating_node=None):
         if p_rebroadcast is None:
             p_rebroadcast = self.param_generator.p_rebroadcast()
         if originating_node is None:
             originating_node = choice(list(self.graph.nodes))
+        take_func = lambda edge: test(edge.strength) and test(p_rebroadcast)
 
-        msg = Message(self.step_index, p_rebroadcast, originating_node)
-        self.graph.submit(msg)
-        self.step_index += 1
-        return msg
+        result = tuple(self.graph.bfs_traversal(originating_node, take=take_func))
+        return Transmission(self.step_index, result, p_rebroadcast=p_rebroadcast)
 
     def run(self, n, **kw):
-        msgs = [self.step(**kw) for _ in range(n)]
-        return msgs
+        return [self.step(**kw) for _ in range(n)]
 
 
-class Message:
-    def __init__(self, id, p_rebroadcast, originating_node):
+class Transmission:
+    def __init__(self, id, nodes, **metadata):
         self.id = id
-        self.p_rebroadcast = p_rebroadcast
-        self.broadcasted_nodes = set()
-        self.originating_node = originating_node
+        self.nodes = nodes
+        self.originating_node = nodes[0]
+        self.metadata = metadata
 
-    def is_broadcasted_by(self, node):
-        return node in self.broadcasted_nodes
 
-    def track_broadcast_by(self, node):
-        self.broadcasted_nodes.add(node)
-
-    def __str__(self):
-        return f'<Message, id: {self.id} broadcasted by {len(self.broadcasted_nodes)} nodes>'
+def test(p):
+    assert 0 <= p <= 1
+    return random() < p

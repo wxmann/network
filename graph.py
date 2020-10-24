@@ -1,10 +1,12 @@
-from helpers import test
-
-
 class _Edge:
-    def __init__(self, to, **kwargs):
-        self.to = to
+    def __init__(self, from_node, to_node, **kwargs):
+        self.from_node = from_node
+        self.to_node = to_node
         self._attrs = kwargs
+
+    @property
+    def attrs(self):
+        return dict(self._attrs)
 
     def __getattr__(self, item):
         try:
@@ -31,6 +33,8 @@ class _Queue:
 
 
 class Graph:
+    _UNDEFINED_NODE = 'EMPTY'
+
     def __init__(self):
         self._nodes = {}
 
@@ -42,50 +46,60 @@ class Graph:
     def structure(self):
         return dict(self._nodes)
 
-    def add_empty_node(self, index):
-        self._nodes[index] = set()
+    def add_standalone_node(self, index):
+        self._nodes[index] = {}
 
-    def contains(self, connection):
-        from_node, to_node = connection
-        if from_node not in self._nodes:
-            return False
-        to_nodes = set(edge.to for edge in self._nodes[from_node])
-        return to_node in to_nodes
+    def contains_node(self, node):
+        return node in self._nodes
 
-    def add_edge(self, connection, strength):
-        if self.contains(connection):
-            raise ValueError(f'Connection {connection} already exists')
-        from_node, to_node = connection
-        if from_node not in self._nodes:
-            self.add_empty_node(from_node)
-        new_edge = _Edge(to_node, strength=strength)
-        self._nodes[from_node].add(new_edge)
+    def _get_edge(self, edge):
+        from_node, to_node = edge
+        return self._nodes.get(from_node, {}).get(to_node, Graph._UNDEFINED_NODE)
 
-    def submit(self, msg):
-        if msg.originating_node not in self._nodes:
-            raise ValueError(f'Invalid originating node {msg.originating_node} for msg')
+    def contains_edge(self, edge):
+        return self._get_edge(edge) is not Graph._UNDEFINED_NODE
+
+    def add_edge(self, edge, **attrs):
+        if self.contains_edge(edge):
+            raise ValueError(f'Edge {edge} already exists')
+        from_node, to_node = edge
+        if not self.contains_node(from_node):
+            self.add_standalone_node(from_node)
+        new_edge = _Edge(from_node, to_node, **attrs)
+        self._nodes[from_node][to_node] = new_edge
+
+    def get_edge_attrs(self, edge):
+        if not self.contains_edge(edge):
+            raise ValueError(f'Edge {edge} does not exist')
+        return self._get_edge(edge).attrs
+
+    def bfs_traversal(self, from_node, take=None, skip_traversed=True):
+        if not self.contains_node(from_node):
+            raise ValueError(f'Node {from_node} does not exist in this graph')
         queue = _Queue()
-        queue.add(msg.originating_node)
+        queue.add(from_node)
+        nodes_traversed = set()
 
         while not queue.empty():
             node_index = queue.remove()
-            msg.track_broadcast_by(node_index)
-            for edge in self._nodes[node_index]:
-                ack = test(edge.strength)
-                rebroadcast = not msg.is_broadcasted_by(edge.to) and test(msg.p_rebroadcast)
-                if ack and rebroadcast:
-                    queue.add(edge.to)
-        return msg
+            nodes_traversed.add(node_index)
+            yield node_index
+
+            for to_node, edge in self._nodes[node_index].items():
+                skip_dup = to_node in nodes_traversed if skip_traversed else False
+                take_edge = take is None or take(edge)
+                if take_edge and not skip_dup:
+                    queue.add(to_node)
 
     def _get_connections_for(self, node_index, predicate):
-        edges = self._nodes[node_index]
+        to_nodes = self._nodes[node_index]
         if not predicate:
             predicate = lambda node: True
-        return [edge.to for edge in edges if predicate(edge.to)]
+        return [to_node for to_node in to_nodes if predicate(to_node)]
 
     def connections(self, node_index, deg=1, predicate=None):
-        if node_index not in self._nodes:
-            raise ValueError(f'Node {node_index} not in this graph')
+        if not self.contains_node(node_index):
+            raise ValueError(f'Node {node_index} does not exist in this graph')
         if deg < 1:
             raise ValueError('Deg must be >= 1')
 
