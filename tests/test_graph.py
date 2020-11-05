@@ -1,4 +1,5 @@
 import unittest
+from collections import namedtuple
 
 from graph import Graph
 
@@ -9,6 +10,7 @@ class TestGraph(unittest.TestCase):
         self.graph.add_edge((1, 2), strength=0.5)
         self.graph.add_edge((2, 1), strength=0.4)
         self.graph.add_edge((2, 3), strength=0.6)
+        self.dummy_msg = namedtuple('msg', ['originating_node'])
 
     def test__should_retrieve_nodes(self):
         self.assertTupleEqual(tuple(self.graph.nodes), (1, 2, 3))
@@ -40,10 +42,20 @@ class TestGraph(unittest.TestCase):
             self.graph.get_edge_attrs((4, 2))
 
     def test__bfs_traverse_from_a_root_node(self):
-        self.assertTupleEqual(tuple(self.graph.bfs_traversal(1)), (1, 2, 3))
+        path = tuple(self.graph.traverse_edges(1))
+        self.assertEqual(len(path), 3)
 
-    def test__bfs_traverse_from_a_root_node_output_edges(self):
-        path = tuple(self.graph.bfs_traversal(1, output='edges'))
+        first_edge = path[0]
+        self.assertTupleEqual((first_edge.from_node, first_edge.to_node), (1, 2))
+
+        second_edge = path[1]
+        self.assertTupleEqual((second_edge.from_node, second_edge.to_node), (2, 1))
+
+        third_edge = path[2]
+        self.assertTupleEqual((third_edge.from_node, third_edge.to_node), (2, 3))
+
+    def test__transmission_from_root_node(self):
+        path = tuple(self.graph.transmit(self.dummy_msg(originating_node=1)))
         self.assertEqual(len(path), 2)
 
         first_edge = path[0]
@@ -53,15 +65,12 @@ class TestGraph(unittest.TestCase):
         self.assertTupleEqual((second_edge.from_node, second_edge.to_node), (2, 3))
 
     def test__bfs_traverse_from_a_leaf_node_no_children(self):
-        self.assertTupleEqual(tuple(self.graph.bfs_traversal(3)), (3,))
+        path = tuple(self.graph.traverse_edges(3))
+        self.assertEqual(len(path), 0)
 
     def test__bfs_traverse_from_nonexisting_node_should_fail(self):
         with self.assertRaises(ValueError):
-            list(self.graph.bfs_traversal(5))
-
-    def test__bfs_traverse_with_take_predicate(self):
-        traversed = tuple(self.graph.bfs_traversal(2, take=lambda edge: edge.strength > 0.5))
-        self.assertTupleEqual(traversed, (2, 3))
+            list(self.graph.traverse_edges(5))
 
     def test__should_return_immediate_children(self):
         self.graph.add_edge((1, 4), strength=0.6)

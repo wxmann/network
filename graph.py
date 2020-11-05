@@ -17,6 +17,9 @@ class _Edge:
         except KeyError:
             raise AttributeError
 
+    def __str__(self):
+        return f'<Edge from: {self.from_node} to {self.to_node}>'
+
 
 class _Queue:
     def __init__(self):
@@ -47,6 +50,11 @@ class Graph:
     def nodes(self):
         return self._nodes.keys()
 
+    def iter_edges(self):
+        for node, edges in self._nodes.items():
+            for edge in edges.values():
+                yield edge
+
     def contains_node(self, node):
         return node in self._nodes
 
@@ -76,36 +84,47 @@ class Graph:
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def bfs_traversal(self, from_node, take=None, output='nodes'):
+    def transmit(self, msg, test_broadcast=None, test_edge=None):
+        if msg.originating_node not in self._nodes:
+            raise ValueError(f'Node {msg.originating_node} does not exist in this graph')
+        queue = _Queue()
+        nodes_broadcasted = set()
+
+        def do_broadcast(node):
+            for child in self._children_for(node):
+                queue.add(self._get_edge((node, child)))
+                nodes_broadcasted.add(node)
+
+        do_broadcast(msg.originating_node)
+
+        while not queue.empty():
+            edge = queue.remove()
+            if all([
+                edge.to_node not in nodes_broadcasted,
+                test_edge is None or test_edge(edge),
+                test_broadcast is None or test_broadcast(edge.to_node)
+            ]):
+                yield edge
+                do_broadcast(edge.to_node)
+
+    def traverse_edges(self, from_node):
         if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
-
-        if output not in ['edges', 'nodes']:
-            raise ValueError('`Output` parameter must be one of `edges` or `nodes`')
-
         queue = _Queue()
         queue.add(from_node)
         nodes_traversed = set()
 
         while not queue.empty():
-            node_index = queue.remove()
-            nodes_traversed.add(node_index)
-            if output == 'nodes':
-                yield node_index
-
-            for to_node in self._children_for(node_index):
-                edge = self._get_edge((node_index, to_node))
-                take_edge = take is None or take(edge)
-                is_dup = to_node in nodes_traversed
-                if take_edge and not is_dup:
-                    queue.add(to_node)
-                    if output == 'edges':
-                        yield edge
+            node = queue.remove()
+            if node not in nodes_traversed:
+                nodes_traversed.add(node)
+                for child in self._children_for(node):
+                    yield self._get_edge((node, child))
+                    queue.add(child)
 
     def _children_for(self, node_index, predicate=None):
-        if predicate is None:
-            predicate = lambda node: True
-        return (node for node in self._nodes[node_index] if predicate(node))
+        return (node for node in self._nodes[node_index]
+                if predicate is None or predicate(node))
 
     def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
         if not self.contains_node(node_index):

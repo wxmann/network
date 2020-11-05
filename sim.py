@@ -26,9 +26,11 @@ class Simulation:
         #     self._evaluate_edges(node)
 
     def _build_edges(self, node, n):
-        if n > len(self.graph.nodes):
+        if n >= len(self.graph.nodes):
             raise ValueError(f'Not enough nodes in graph to build {n} edges')
-        for node_to_follow in sample(self.graph.nodes, n):
+        pool = set(self.graph.nodes)
+        pool.remove(node)
+        for node_to_follow in sample(pool, n):
             self.graph.add_edge(edge=(node, node_to_follow),
                                 strength=self.param_generator.edge_strength())
 
@@ -47,9 +49,12 @@ class Simulation:
             p_rebroadcast = self.param_generator.p_rebroadcast()
         if originating_node is None:
             originating_node = choice(list(self.graph.nodes))
-        take_func = lambda edge: test(edge.strength) and test(p_rebroadcast)
 
-        result = tuple(self.graph.bfs_traversal(originating_node, take=take_func))
+        result = tuple(
+            self.graph.transmit(originating_node,
+                                test_broadcast=lambda node: test(p_rebroadcast),
+                                test_edge=lambda edge: test(edge.strength))
+        )
         return Transmission(self.step_index, result, p_rebroadcast=p_rebroadcast)
 
     def run(self, n, **kw):

@@ -60,7 +60,7 @@ class GraphDrawer:
 
         plt.scatter(xs, ys, s=s)
 
-        for edge in self.graph.bfs_traversal(start, output='edges'):
+        for edge in self.graph.traverse_edges(start):
             x1, y1 = coords[edge.from_node]
             x2, y2 = coords[edge.to_node]
             if arrows:
