@@ -1,3 +1,6 @@
+from draw import GraphDrawer
+
+
 class _Edge:
     def __init__(self, from_node, to_node, **kwargs):
         self.from_node = from_node
@@ -126,3 +129,7 @@ class Graph:
                 traversed_nodes.update(this_deg_nodes)
             tracked_deg_nodes = this_deg_nodes
             yield tracked_deg_nodes
+
+    def draw(self, start, **kwargs):
+        drawer = GraphDrawer(self)
+        drawer.draw(start, **kwargs)
