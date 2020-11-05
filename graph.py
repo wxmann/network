@@ -73,9 +73,12 @@ class Graph:
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def bfs_traversal(self, from_node, take=None):
+    def bfs_traversal(self, from_node, take=None, output='nodes'):
         if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
+
+        if output not in ['edges', 'nodes']:
+            raise ValueError('`Output` parameter must be one of `edges` or `nodes`')
 
         queue = _Queue()
         queue.add(from_node)
@@ -84,7 +87,8 @@ class Graph:
         while not queue.empty():
             node_index = queue.remove()
             nodes_traversed.add(node_index)
-            yield node_index
+            if output == 'nodes':
+                yield node_index
 
             for to_node in self._children_for(node_index):
                 edge = self._get_edge((node_index, to_node))
@@ -92,11 +96,13 @@ class Graph:
                 is_dup = to_node in nodes_traversed
                 if take_edge and not is_dup:
                     queue.add(to_node)
+                    if output == 'edges':
+                        yield edge
 
     def _children_for(self, node_index, predicate=None):
         if predicate is None:
             predicate = lambda node: True
-        return [node for node in self._nodes[node_index] if predicate(node)]
+        return (node for node in self._nodes[node_index] if predicate(node))
 
     def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
         if not self.contains_node(node_index):
@@ -105,7 +111,7 @@ class Graph:
             raise ValueError('Deg must be >= 1')
 
         deg_on = 1
-        tracked_deg_nodes = self._children_for(node_index, predicate)
+        tracked_deg_nodes = list(self._children_for(node_index, predicate))
         traversed_nodes = set(tracked_deg_nodes)
         traversed_nodes.add(node_index)
         yield tracked_deg_nodes

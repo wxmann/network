@@ -42,6 +42,16 @@ class TestGraph(unittest.TestCase):
     def test__bfs_traverse_from_a_root_node(self):
         self.assertTupleEqual(tuple(self.graph.bfs_traversal(1)), (1, 2, 3))
 
+    def test__bfs_traverse_from_a_root_node_output_edges(self):
+        path = tuple(self.graph.bfs_traversal(1, output='edges'))
+        self.assertEqual(len(path), 2)
+
+        first_edge = path[0]
+        self.assertTupleEqual((first_edge.from_node, first_edge.to_node), (1, 2))
+
+        second_edge = path[1]
+        self.assertTupleEqual((second_edge.from_node, second_edge.to_node), (2, 3))
+
     def test__bfs_traverse_from_a_leaf_node_no_children(self):
         self.assertTupleEqual(tuple(self.graph.bfs_traversal(3)), (3,))
 
