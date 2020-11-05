@@ -26,7 +26,7 @@ class TestGraphDrawer(unittest.TestCase):
 
     def test__calculate_spans(self):
         spans = self.drawer._spans(1)
-        self.assertListEqual(spans, [
+        self.assertListEqual(list(spans), [
             {1: 1.0},
             {2: 0.3333333333333333, 3: 0.2222222222222222, 4: 0.4444444444444444},
             {5: 0.2, 6: 0.2, 7: 0.3, 8: 0.1, 9: 0.1, 10: 0.1},

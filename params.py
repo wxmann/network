@@ -1,6 +1,9 @@
 from functools import partial
 from random import betavariate, random
 import math
+from collections import namedtuple
+
+applyable = namedtuple('applyable', ['func', 'deterministic'])
 
 
 class ParamGenerator:
@@ -9,30 +12,34 @@ class ParamGenerator:
                  edge_strength=None,
                  p_follow_back=None,
                  p_rebroadcast=None):
-        self._follow_count_func = ParamGenerator._to_generator(follow_count)
-        self._edge_strength_func = ParamGenerator._to_generator(edge_strength)
-        self._p_follow_back_func = ParamGenerator._to_generator(p_follow_back)
-        self._p_rebroadcast_func = ParamGenerator._to_generator(p_rebroadcast)
+        self._follow_count = ParamGenerator._to_generator(follow_count)
+        self._edge_strength = ParamGenerator._to_generator(edge_strength)
+        self._p_follow_back = ParamGenerator._to_generator(p_follow_back)
+        self._p_rebroadcast = ParamGenerator._to_generator(p_rebroadcast)
 
     @staticmethod
     def _to_generator(arg):
         if arg is None:
-            return random
+            return applyable(func=random, deterministic=False)
         if isinstance(arg, tuple) and len(arg) == 2:
-            return partial(betavariate, alpha=arg[0], beta=arg[1])
-        return lambda: arg
+            func = partial(betavariate, alpha=arg[0], beta=arg[1])
+            return applyable(func=func, deterministic=False)
+
+        return applyable(func=lambda: arg, deterministic=True)
 
     def follow_count(self, n_nodes):
-        return int(math.ceil(self._follow_count_func() * n_nodes))
+        if self._follow_count.deterministic:
+            return self._follow_count.func()
+        return int(math.ceil(self._follow_count.func() * n_nodes))
 
     def edge_strength(self):
-        return self._edge_strength_func()
+        return self._edge_strength.func()
 
     def p_follow_back(self):
-        return self._p_follow_back_func()
+        return self._p_follow_back.func()
 
     def p_rebroadcast(self):
-        return self._p_rebroadcast_func()
+        return self._p_rebroadcast.func()
 
 
 def beta_params(mean, sd):
