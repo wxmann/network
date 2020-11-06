@@ -20,9 +20,6 @@ class _Edge:
     def __str__(self):
         return f'<Edge from: {self.from_node} to {self.to_node}>'
 
-    def __hash__(self):
-        return hash((self.from_node, self.to_node))
-
 
 class _Queue:
     def __init__(self):

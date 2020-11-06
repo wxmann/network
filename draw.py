@@ -36,18 +36,30 @@ class _EdgeLine:
         self.alpha = alpha
 
 
-class _GraphDrawerMetadata:
+class _MplGraphPlotter:
     def __init__(self, graph, start):
         self._graph = graph
         self._node_map = dict(self._iter_nodepoints(start))
         self._edge_map = dict(self._iter_edgelines(start))
+        self._scat = None
+        self._arrows = None
+
+    @property
+    def scat(self):
+        return self._scat
+
+    @property
+    def arrows_list(self):
+        return list(self._arrows.values())
 
     def _positions(self, start):
         spans = list(_spans(self._graph, start))
         min_R = 0
         dR = 100
         for lev_spans in spans:
-            dR_adjustment = math.sqrt(len(lev_spans) * len(spans) / len(self._graph.nodes))
+            dR_adjustment = math.sqrt(
+                len(lev_spans) * len(spans) / len(self._graph.nodes)
+            )
             max_R = min_R + dR * dR_adjustment
 
             min_theta = 0
@@ -75,24 +87,50 @@ class _GraphDrawerMetadata:
             x1, y1 = start_pt.x, start_pt.y
             x2, y2 = end_pt.x, end_pt.y
 
-            yield edge, _EdgeLine(x1, y1, dx=(x2 - x1), dy=(y2 - y1),
-                                  color='black', alpha=0.15)
+            yield (edge.from_node, edge.to_node), _EdgeLine(
+                x1, y1,
+                dx=(x2 - x1), dy=(y2 - y1),
+                color='black', alpha=0.15
+            )
 
-    @property
-    def xs(self):
-        return tuple(pt.x for pt in self._node_map.values())
+    def refresh(self):
+        if self._scat is not None:
+            self._scat.set_facecolors(
+                tuple(pt.color for pt in self._node_map.values())
+            )
+        if self._arrows is not None:
+            for edge, patch in self._arrows.items():
+                edgeline = self._edge_map.get(edge, None)
+                if edgeline is not None:
+                    patch.set_color(edgeline.color)
+                    patch.set_alpha(edgeline.alpha)
 
-    @property
-    def ys(self):
-        return tuple(pt.y for pt in self._node_map.values())
+    def plot_nodes(self, **additional_kw):
+        self._scat = plt.scatter(
+            tuple(pt.x for pt in self._node_map.values()),
+            tuple(pt.y for pt in self._node_map.values()),
+            c=tuple(pt.color for pt in self._node_map.values()),
+            **additional_kw
+        )
 
-    @property
-    def cs(self):
-        return tuple(pt.color for pt in self._node_map.values())
+    def plot_edges(self, **additional_kw):
+        self._arrows = {}
+        for edge, edgeline in self._edge_map.items():
+            arrow = plt.arrow(edgeline.x1, edgeline.y1,
+                              edgeline.dx, edgeline.dy,
+                              length_includes_head=True,
+                              color=edgeline.color, alpha=edgeline.alpha,
+                              **additional_kw)
+            self._arrows[edge] = arrow
 
-    @property
-    def arrow_coords(self):
-        return self._edge_map.values()
+    def set_node(self, node, new_color):
+        self._node_map[node].color = new_color
+
+    def set_edge(self, edge, new_color, new_alpha=None):
+        edgeline = self._edge_map[edge]
+        edgeline.color = new_color
+        if new_alpha is not None:
+            edgeline.alpha = new_alpha
 
 
 class GraphDrawer:
@@ -109,18 +147,17 @@ class GraphDrawer:
                 overhang=0.6
             )
 
-        plot_meta = _GraphDrawerMetadata(self.graph, start)
+        plotter = _MplGraphPlotter(self.graph, start)
+        plotter.plot_nodes(s=s)
+        plotter.plot_edges(**arrow_kw) if arrows else []
+        return plotter
 
-        scatter_pc = plt.scatter(plot_meta.xs, plot_meta.ys, s=s, c=plot_meta.cs)
-        arrow_coll = []
 
-        if arrows:
-            for edge_coords in plot_meta.arrow_coords:
-                arrow = plt.arrow(edge_coords.x1, edge_coords.y1,
-                                  edge_coords.dx, edge_coords.dy,
-                                  length_includes_head=True,
-                                  color=edge_coords.color, alpha=edge_coords.alpha,
-                                  **arrow_kw)
-                arrow_coll.append(arrow)
+class GraphAnimator:
+    def __init__(self, graph, start):
+        self.graph = graph
+        self.start = start
+        self.drawer = GraphDrawer(self.graph)
 
-        return scatter_pc, arrow_coll
+    def draw_base(self, **kwargs):
+        return self.drawer.draw(self.start, **kwargs)
