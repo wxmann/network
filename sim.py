@@ -31,7 +31,7 @@ class Simulation:
         pool = set(self.graph.nodes)
         pool.remove(node)
         for node_to_follow in sample(pool, n):
-            self.graph.add_edge(edge=(node, node_to_follow),
+            self.graph.add_edge(edge=(node_to_follow, node),
                                 strength=self.param_generator.edge_strength())
 
     def _evaluate_edges(self, node, symmetric_edges=True):
@@ -62,10 +62,10 @@ class Simulation:
 
 
 class Transmission:
-    def __init__(self, id, nodes, **metadata):
+    def __init__(self, id, path, originating_node, **metadata):
         self.id = id
-        self.nodes = nodes
-        self.originating_node = nodes[0]
+        self.path = path
+        self.originating_node = originating_node
         self.metadata = metadata
 
 

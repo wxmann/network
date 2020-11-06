@@ -55,7 +55,7 @@ class TestGraph(unittest.TestCase):
         self.assertTupleEqual((third_edge.from_node, third_edge.to_node), (2, 3))
 
     def test__transmission_from_root_node(self):
-        path = tuple(self.graph.transmit(self.dummy_msg(originating_node=1)))
+        path = tuple(self.graph.transmit(1))
         self.assertEqual(len(path), 2)
 
         first_edge = path[0]

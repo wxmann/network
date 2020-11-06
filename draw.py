@@ -45,7 +45,7 @@ class GraphDrawer:
 
     def draw(self, start, s=None, arrows=True, arrow_kw=None):
         if s is None:
-            s = 200
+            s = 50
         if arrow_kw is None:
             arrow_kw = dict(
                 head_width=10,
@@ -58,10 +58,15 @@ class GraphDrawer:
         xs = [coord[0] for coord in coords.values()]
         ys = [coord[1] for coord in coords.values()]
 
-        plt.scatter(xs, ys, s=s)
+        scatter_pc = plt.scatter(xs, ys, s=s)
+        arrow_coll = []
 
-        for edge in self.graph.traverse_edges(start):
-            x1, y1 = coords[edge.from_node]
-            x2, y2 = coords[edge.to_node]
-            if arrows:
-                plt.arrow(x1, y1, (x2 - x1), (y2 - y1), length_includes_head=True, **arrow_kw)
+        if arrows:
+            for edge in self.graph.traverse_edges(start):
+                x1, y1 = coords[edge.from_node]
+                x2, y2 = coords[edge.to_node]
+                arrow = plt.arrow(x1, y1, (x2 - x1), (y2 - y1),
+                                  length_includes_head=True, **arrow_kw)
+                arrow_coll.append(arrow)
+
+        return scatter_pc, arrow_coll

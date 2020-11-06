@@ -84,9 +84,9 @@ class Graph:
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def transmit(self, msg, test_broadcast=None, test_edge=None):
-        if msg.originating_node not in self._nodes:
-            raise ValueError(f'Node {msg.originating_node} does not exist in this graph')
+    def transmit(self, from_node, test_broadcast=None, test_edge=None):
+        if from_node not in self._nodes:
+            raise ValueError(f'Node {from_node} does not exist in this graph')
         queue = _Queue()
         nodes_broadcasted = set()
 
@@ -95,7 +95,7 @@ class Graph:
                 queue.add(self._get_edge((node, child)))
                 nodes_broadcasted.add(node)
 
-        do_broadcast(msg.originating_node)
+        do_broadcast(from_node)
 
         while not queue.empty():
             edge = queue.remove()
@@ -151,4 +151,4 @@ class Graph:
 
     def draw(self, start, **kwargs):
         drawer = GraphDrawer(self)
-        drawer.draw(start, **kwargs)
+        return drawer.draw(start, **kwargs)
