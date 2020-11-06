@@ -27,7 +27,7 @@ class _NodePoint:
 
 
 class _EdgeLine:
-    def __init__(self, x1, y1, dx, dy, color, alpha):
+    def __init__(self, x1, y1, dx, dy, color, alpha=None):
         self.x1 = x1
         self.y1 = y1
         self.dx = dx
@@ -90,15 +90,15 @@ class _MplGraphPlotter:
             yield (edge.from_node, edge.to_node), _EdgeLine(
                 x1, y1,
                 dx=(x2 - x1), dy=(y2 - y1),
-                color='black', alpha=0.15
+                color='black'
             )
 
-    def refresh(self):
-        if self._scat is not None:
+    def refresh(self, nodes=True, edges=True):
+        if nodes and self._scat is not None:
             self._scat.set_facecolors(
                 tuple(pt.color for pt in self._node_map.values())
             )
-        if self._arrows is not None:
+        if edges and self._arrows is not None:
             for edge, patch in self._arrows.items():
                 edgeline = self._edge_map.get(edge, None)
                 if edgeline is not None:
@@ -113,9 +113,10 @@ class _MplGraphPlotter:
             **additional_kw
         )
 
-    def plot_edges(self, **additional_kw):
+    def plot_edges(self, alpha=0.15, **additional_kw):
         self._arrows = {}
         for edge, edgeline in self._edge_map.items():
+            edgeline.alpha = alpha
             arrow = plt.arrow(edgeline.x1, edgeline.y1,
                               edgeline.dx, edgeline.dy,
                               length_includes_head=True,
