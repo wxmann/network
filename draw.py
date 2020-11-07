@@ -2,6 +2,7 @@ import math
 import random
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
 from matplotlib.animation import FuncAnimation
 
 
@@ -43,6 +44,7 @@ class _MplGraphPlotter:
         self._edge_map = dict(self._iter_edgelines(start))
         self._scat = None
         self._arrows = None
+        self._changed_artists = []
 
     @property
     def scat(self):
@@ -54,7 +56,9 @@ class _MplGraphPlotter:
 
     @property
     def artists(self):
-        return [self.scat] + self.arrows_list
+        if not self._changed_artists:
+            return [self.scat] + self.arrows_list
+        return self._changed_artists
 
     def _positions(self, start):
         spans = list(_spans(self._graph, start))
@@ -97,16 +101,35 @@ class _MplGraphPlotter:
                 color='black'
             )
 
-    def refresh(self, nodes=True, edges=True):
+    @staticmethod
+    def _colors_eq(c1, c2):
+        return to_rgba(c1) == to_rgba(c2)
+
+    def refresh(self, nodes=True, edges=True, for_blit=True):
+        if for_blit:
+            self._changed_artists = []
+
         if nodes and self._scat is not None:
             self._scat.set_facecolors(
                 tuple(pt.color for pt in self._node_map.values())
             )
+            if for_blit:
+                self._changed_artists.append(self._scat)
+
         if edges and self._arrows is not None:
             for edge, patch in self._arrows.items():
-                edgeline = self._edge_map.get(edge, None)
-                if edgeline is not None:
+                edgeline = self._edge_map[edge]
+                if not for_blit:
                     patch.set_color(edgeline.color)
+                else:
+                    edgecolor = patch.get_edgecolor()
+                    facecolor = patch.get_facecolor()
+                    if not all([
+                        _MplGraphPlotter._colors_eq(edgecolor, edgeline.color),
+                        _MplGraphPlotter._colors_eq(facecolor, edgeline.color)
+                    ]):
+                        patch.set_color(edgeline.color)
+                        self._changed_artists.append(patch)
 
     def plot_nodes(self, **additional_kw):
         self._scat = plt.scatter(
@@ -165,7 +188,7 @@ class GraphAnimator:
 
     def animate(self, fig, transmission,
                 every=3, max_frames=None,
-                marked_color='red',
+                marked_color='red', blit=True,
                 **draw_kw):
 
         def update(edges_traversed):
@@ -176,7 +199,8 @@ class GraphAnimator:
                     self.plotter.set_edge(edge, marked_color)
                     self.plotter.set_node(edge.from_node, marked_color)
                     self.plotter.set_node(edge.to_node, marked_color)
-            self.plotter.refresh()
+            self.plotter.refresh(for_blit=blit)
+            return self.plotter.artists
 
         def gen_func():
             yield None
@@ -188,8 +212,9 @@ class GraphAnimator:
 
         def init():
             self.plotter = self.drawer.draw(self.start, **draw_kw)
+            return self.plotter.artists
 
-        return FuncAnimation(fig, update, frames=gen_func, init_func=init)
+        return FuncAnimation(fig, update, frames=gen_func, init_func=init, blit=blit)
 
 
 def chunks(lst, n):
