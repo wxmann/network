@@ -2,6 +2,7 @@ import math
 import random
 
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 
 def _spans(graph, start):
@@ -52,6 +53,10 @@ class _MplGraphPlotter:
     def arrows_list(self):
         return list(self._arrows.values())
 
+    @property
+    def artists(self):
+        return [self.scat] + self.arrows_list
+
     def _positions(self, start):
         spans = list(_spans(self._graph, start))
         min_R = 0
@@ -87,7 +92,7 @@ class _MplGraphPlotter:
             x1, y1 = start_pt.x, start_pt.y
             x2, y2 = end_pt.x, end_pt.y
 
-            yield (edge.from_node, edge.to_node), _EdgeLine(
+            yield edge, _EdgeLine(
                 x1, y1,
                 dx=(x2 - x1), dy=(y2 - y1),
                 color='black'
@@ -138,7 +143,7 @@ class GraphDrawer:
     def __init__(self, graph):
         self.graph = graph
 
-    def draw(self, start, s=None, arrows=True, arrow_kw=None):
+    def draw(self, start, s=None, arrows=True, alpha=0.15, arrow_kw=None):
         if s is None:
             s = 50
         if arrow_kw is None:
@@ -150,7 +155,7 @@ class GraphDrawer:
 
         plotter = _MplGraphPlotter(self.graph, start)
         plotter.plot_nodes(s=s)
-        plotter.plot_edges(**arrow_kw) if arrows else []
+        plotter.plot_edges(alpha=alpha, **arrow_kw) if arrows else []
         return plotter
 
 
@@ -159,6 +164,38 @@ class GraphAnimator:
         self.graph = graph
         self.start = start
         self.drawer = GraphDrawer(self.graph)
+        self.plotter = None
 
-    def draw_base(self, **kwargs):
-        return self.drawer.draw(self.start, **kwargs)
+    def animate(self, fig, transmission,
+                every=3, max_frames=None,
+                marked_color='red', marked_alpha=0.2,
+                **kwargs):
+
+        def update(edges_traversed):
+            if not edges_traversed:
+                self.plotter.set_node(transmission.originating_node, marked_color)
+            else:
+                for edge in edges_traversed:
+                    self.plotter.set_edge(edge, marked_color, marked_alpha)
+                    self.plotter.set_node(edge.from_node, marked_color)
+                    self.plotter.set_node(edge.to_node, marked_color)
+            self.plotter.refresh()
+
+        def gen_func():
+            yield None
+            chunked = chunks(transmission.path, every)
+            for i, chunk in enumerate(chunked):
+                if max_frames and i >= max_frames:
+                    return
+                yield chunk
+
+        def init():
+            self.plotter = self.drawer.draw(self.start, **kwargs)
+
+        return FuncAnimation(fig, update, frames=gen_func, init_func=init)
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]

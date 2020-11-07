@@ -1,5 +1,7 @@
 .idea
 sandbox*.ipynb
+*.gif
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

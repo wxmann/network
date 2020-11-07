@@ -1,6 +1,7 @@
 from random import choice, sample, random
 
 from graph import Graph
+from draw import GraphAnimator
 
 
 class Simulation:
@@ -44,29 +45,36 @@ class Simulation:
                     new_edge_strength = self.param_generator.edge_strength()
                 self.graph.add_edge(edge=(conn, node), strength=new_edge_strength)
 
-    def step(self, p_rebroadcast=None, originating_node=None):
+    def step(self, p_rebroadcast=None, start=None):
         if p_rebroadcast is None:
             p_rebroadcast = self.param_generator.p_rebroadcast()
-        if originating_node is None:
-            originating_node = choice(list(self.graph.nodes))
+        if start is None:
+            start = choice(list(self.graph.nodes))
 
-        result = tuple(
-            self.graph.transmit(originating_node,
-                                test_broadcast=lambda node: test(p_rebroadcast),
-                                test_edge=lambda edge: test(edge.strength))
-        )
-        return Transmission(self.step_index, result, p_rebroadcast=p_rebroadcast)
+        transmission = self.graph.transmit(start,
+                                           test_broadcast=lambda node: test(p_rebroadcast),
+                                           test_edge=lambda edge: test(edge.strength))
+        return Transmission(self.step_index, tuple(transmission),
+                            start,
+                            metadata=dict(p_rebroadcast=p_rebroadcast))
+
+    def animate(self, fig, transmission, **animator_kw):
+        animator = GraphAnimator(self.graph, transmission.originating_node)
+        return animator.animate(fig, transmission, **animator_kw)
 
     def run(self, n, **kw):
         return [self.step(**kw) for _ in range(n)]
 
 
 class Transmission:
-    def __init__(self, id, path, originating_node, **metadata):
+    def __init__(self, id, path, originating_node, metadata):
         self.id = id
         self.path = path
         self.originating_node = originating_node
         self.metadata = metadata
+
+    def __iter__(self):
+        return iter(self.path)
 
 
 def test(p):
