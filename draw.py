@@ -28,13 +28,12 @@ class _NodePoint:
 
 
 class _EdgeLine:
-    def __init__(self, x1, y1, dx, dy, color, alpha=None):
+    def __init__(self, x1, y1, dx, dy, color):
         self.x1 = x1
         self.y1 = y1
         self.dx = dx
         self.dy = dy
         self.color = color
-        self.alpha = alpha
 
 
 class _MplGraphPlotter:
@@ -108,7 +107,6 @@ class _MplGraphPlotter:
                 edgeline = self._edge_map.get(edge, None)
                 if edgeline is not None:
                     patch.set_color(edgeline.color)
-                    patch.set_alpha(edgeline.alpha)
 
     def plot_nodes(self, **additional_kw):
         self._scat = plt.scatter(
@@ -118,32 +116,29 @@ class _MplGraphPlotter:
             **additional_kw
         )
 
-    def plot_edges(self, alpha=0.15, **additional_kw):
+    def plot_edges(self, **additional_kw):
         self._arrows = {}
         for edge, edgeline in self._edge_map.items():
-            edgeline.alpha = alpha
             arrow = plt.arrow(edgeline.x1, edgeline.y1,
                               edgeline.dx, edgeline.dy,
                               length_includes_head=True,
-                              color=edgeline.color, alpha=edgeline.alpha,
+                              color=edgeline.color,
                               **additional_kw)
             self._arrows[edge] = arrow
 
     def set_node(self, node, new_color):
         self._node_map[node].color = new_color
 
-    def set_edge(self, edge, new_color, new_alpha=None):
+    def set_edge(self, edge, new_color):
         edgeline = self._edge_map[edge]
         edgeline.color = new_color
-        if new_alpha is not None:
-            edgeline.alpha = new_alpha
 
 
 class GraphDrawer:
     def __init__(self, graph):
         self.graph = graph
 
-    def draw(self, start, s=None, arrows=True, alpha=0.15, arrow_kw=None):
+    def draw(self, start, s=None, arrows=True, scatter_kw=None, arrow_kw=None):
         if s is None:
             s = 50
         if arrow_kw is None:
@@ -152,10 +147,12 @@ class GraphDrawer:
                 head_length=15,
                 overhang=0.6
             )
+        if scatter_kw is None:
+            scatter_kw = {}
 
         plotter = _MplGraphPlotter(self.graph, start)
-        plotter.plot_nodes(s=s)
-        plotter.plot_edges(alpha=alpha, **arrow_kw) if arrows else []
+        plotter.plot_nodes(s=s, **scatter_kw)
+        plotter.plot_edges(**arrow_kw) if arrows else []
         return plotter
 
 
@@ -168,15 +165,15 @@ class GraphAnimator:
 
     def animate(self, fig, transmission,
                 every=3, max_frames=None,
-                marked_color='red', marked_alpha=0.2,
-                **kwargs):
+                marked_color='red',
+                **draw_kw):
 
         def update(edges_traversed):
             if not edges_traversed:
                 self.plotter.set_node(transmission.originating_node, marked_color)
             else:
                 for edge in edges_traversed:
-                    self.plotter.set_edge(edge, marked_color, marked_alpha)
+                    self.plotter.set_edge(edge, marked_color)
                     self.plotter.set_node(edge.from_node, marked_color)
                     self.plotter.set_node(edge.to_node, marked_color)
             self.plotter.refresh()
@@ -190,7 +187,7 @@ class GraphAnimator:
                 yield chunk
 
         def init():
-            self.plotter = self.drawer.draw(self.start, **kwargs)
+            self.plotter = self.drawer.draw(self.start, **draw_kw)
 
         return FuncAnimation(fig, update, frames=gen_func, init_func=init)
 
