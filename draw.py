@@ -102,8 +102,13 @@ class _MplGraphPlotter:
             )
 
     @staticmethod
-    def _colors_eq(c1, c2):
-        return to_rgba(c1) == to_rgba(c2)
+    def _patch_aligned(patch, edgeline):
+        edgecolor = patch.get_edgecolor()
+        facecolor = patch.get_facecolor()
+        return all([
+            to_rgba(edgecolor) == to_rgba(edgeline.color),
+            to_rgba(facecolor) == to_rgba(edgeline.color)
+        ])
 
     def refresh(self, nodes=True, edges=True, for_blit=True):
         if for_blit:
@@ -121,15 +126,9 @@ class _MplGraphPlotter:
                 edgeline = self._edge_map[edge]
                 if not for_blit:
                     patch.set_color(edgeline.color)
-                else:
-                    edgecolor = patch.get_edgecolor()
-                    facecolor = patch.get_facecolor()
-                    if not all([
-                        _MplGraphPlotter._colors_eq(edgecolor, edgeline.color),
-                        _MplGraphPlotter._colors_eq(facecolor, edgeline.color)
-                    ]):
-                        patch.set_color(edgeline.color)
-                        self._changed_artists.append(patch)
+                elif not _MplGraphPlotter._patch_aligned(patch, edgeline):
+                    patch.set_color(edgeline.color)
+                    self._changed_artists.append(patch)
 
     def plot_nodes(self, **additional_kw):
         self._scat = plt.scatter(
