@@ -1,80 +1,41 @@
-from random import choice, sample, random
+from random import sample, random
 
 from network.graph import Graph
-from network.draw import GraphAnimator
 
 
-class Simulation:
-    @classmethod
-    def create(cls, n_nodes, param_generator):
-        graph = Graph(range(n_nodes))
-        sim = cls(graph, param_generator)
-        sim.initialize()
-        return sim
+def run_simulation(graph, start, test_broadcast=None,
+                   test_edge=None, metadata=None):
+    transmission = graph.transmit(start, test_broadcast=test_broadcast,
+                                  test_edge=test_edge)
+    return Transmission(tuple(transmission), metadata)
 
-    def __init__(self, graph, param_generator):
-        self.graph = graph
-        self.param_generator = param_generator
-        self.step_index = 0
 
-    def initialize(self, param_generator=None):
-        if param_generator is not None:
-            self.param_generator = param_generator
-        graph_size = len(self.graph.nodes)
-        for node in self.graph.nodes:
-            self._build_edges(node, n=self.param_generator.follow_count(graph_size))
-        # for node in self.graph.nodes:
-        #     self._evaluate_edges(node)
+def random_graph(n_nodes, param_generator):
+    graph = Graph(range(n_nodes))
 
-    def _build_edges(self, node, n):
-        if n >= len(self.graph.nodes):
-            raise ValueError(f'Not enough nodes in graph to build {n} edges')
-        pool = set(self.graph.nodes)
+    for node in graph.nodes:
+        edges_to_build = param_generator.follow_count(n_nodes)
+        pool = set(graph.nodes)
         pool.remove(node)
-        for node_to_follow in sample(pool, n):
-            self.graph.add_edge(edge=(node_to_follow, node),
-                                strength=self.param_generator.edge_strength())
+        for node_to_follow in sample(pool, edges_to_build):
+            graph.add_edge(edge=(node_to_follow, node),
+                           strength=param_generator.edge_strength())
 
-    def _evaluate_edges(self, node, symmetric_edges=True):
-        conns = next(self.graph.children(node))
-        for conn in conns:
-            if test(self.param_generator.p_follow_back()) and not self.graph.contains_edge((conn, node)):
-                if symmetric_edges:
-                    new_edge_strength = self.graph.get_edge_attrs((node, conn))['strength']
-                else:
-                    new_edge_strength = self.param_generator.edge_strength()
-                self.graph.add_edge(edge=(conn, node), strength=new_edge_strength)
-
-    def step(self, p_rebroadcast=None, start=None):
-        if p_rebroadcast is None:
-            p_rebroadcast = self.param_generator.p_rebroadcast()
-        if start is None:
-            start = choice(list(self.graph.nodes))
-
-        transmission = self.graph.transmit(start,
-                                           test_broadcast=lambda node: test(p_rebroadcast),
-                                           test_edge=lambda edge: test(edge.strength))
-        return Transmission(self.step_index, tuple(transmission),
-                            start,
-                            metadata=dict(p_rebroadcast=p_rebroadcast))
-
-    def animate(self, fig, transmission, **animator_kw):
-        animator = GraphAnimator(self.graph, transmission.originating_node)
-        return animator.animate(fig, transmission, **animator_kw)
-
-    def run(self, n, **kw):
-        return [self.step(**kw) for _ in range(n)]
+    return graph
 
 
 class Transmission:
-    def __init__(self, id, path, originating_node, metadata):
-        self.id = id
+    def __init__(self, path, metadata=None):
         self.path = path
-        self.originating_node = originating_node
-        self.metadata = metadata
+        self._metadata = metadata or {}
 
-    def __iter__(self):
-        return iter(self.path)
+    @property
+    def originating_node(self):
+        return self.path[0].from_node
+
+    @property
+    def metadata(self):
+        return dict(self._metadata)
 
 
 def test(p):

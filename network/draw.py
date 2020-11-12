@@ -37,11 +37,12 @@ class _EdgeLine:
         self.color = color
 
 
-class _MplGraphPlotter:
+class GraphPlotter:
     def __init__(self, graph, start):
         self._graph = graph
-        self._node_map = dict(self._iter_nodepoints(start))
-        self._edge_map = dict(self._iter_edgelines(start))
+        self._start = start
+        self._node_map = dict(self._iter_nodepoints())
+        self._edge_map = dict(self._iter_edgelines())
         self._scat = None
         self._arrows = None
         self._changed_artists = []
@@ -60,36 +61,15 @@ class _MplGraphPlotter:
             return [self.scat] + self.arrows_list
         return self._changed_artists
 
-    def _positions(self, start):
-        spans = list(_spans(self._graph, start))
-        min_R = 0
-        dR = 100
-        for lev_spans in spans:
-            dR_adjustment = math.sqrt(
-                len(lev_spans) * len(spans) / len(self._graph.nodes)
-            )
-            max_R = min_R + dR * dR_adjustment
+    def _positions(self):
+        raise NotImplementedError('subclasses must implement this')
 
-            min_theta = 0
-            for node, node_span in lev_spans.items():
-                max_theta = min_theta + node_span * 2 * math.pi
-
-                r_pos = random.uniform(min_R, max_R) if min_R != 0 else 0
-                theta_pos = (min_theta + max_theta) / 2
-                x = r_pos * math.cos(theta_pos)
-                y = r_pos * math.sin(theta_pos)
-                yield node, (x, y)
-
-                min_theta = max_theta
-
-            min_R = max_R
-
-    def _iter_nodepoints(self, start):
-        for node, (x, y) in self._positions(start):
+    def _iter_nodepoints(self):
+        for node, (x, y) in self._positions():
             yield node, _NodePoint(x, y, color='blue')
 
-    def _iter_edgelines(self, start):
-        for edge in self._graph.traverse_edges(start):
+    def _iter_edgelines(self):
+        for edge in self._graph.traverse_edges(self._start):
             start_pt = self._node_map[edge.from_node]
             end_pt = self._node_map[edge.to_node]
             x1, y1 = start_pt.x, start_pt.y
@@ -126,7 +106,7 @@ class _MplGraphPlotter:
                 edgeline = self._edge_map[edge]
                 if not for_blit:
                     patch.set_color(edgeline.color)
-                elif not _MplGraphPlotter._patch_aligned(patch, edgeline):
+                elif not GraphPlotter._patch_aligned(patch, edgeline):
                     patch.set_color(edgeline.color)
                     self._changed_artists.append(patch)
 
@@ -156,9 +136,39 @@ class _MplGraphPlotter:
         edgeline.color = new_color
 
 
+class _BaseGraphPlotter(GraphPlotter):
+    def __init__(self, graph, start):
+        super().__init__(graph, start)
+
+    def _positions(self):
+        spans = list(_spans(self._graph, self._start))
+        min_R = 0
+        dR = 100
+        for lev_spans in spans:
+            dR_adjustment = math.sqrt(
+                len(lev_spans) * len(spans) / len(self._graph.nodes)
+            )
+            max_R = min_R + dR * dR_adjustment
+
+            min_theta = 0
+            for node, node_span in lev_spans.items():
+                max_theta = min_theta + node_span * 2 * math.pi
+
+                r_pos = random.uniform(min_R, max_R) if min_R != 0 else 0
+                theta_pos = (min_theta + max_theta) / 2
+                x = r_pos * math.cos(theta_pos)
+                y = r_pos * math.sin(theta_pos)
+                yield node, (x, y)
+
+                min_theta = max_theta
+
+            min_R = max_R
+
+
 class GraphDrawer:
-    def __init__(self, graph):
+    def __init__(self, graph, plotter=None):
         self.graph = graph
+        self.plotter = plotter or _BaseGraphPlotter
 
     def draw(self, start, s=None, arrows=True, scatter_kw=None, arrow_kw=None):
         if s is None:
@@ -172,17 +182,16 @@ class GraphDrawer:
         if scatter_kw is None:
             scatter_kw = {}
 
-        plotter = _MplGraphPlotter(self.graph, start)
+        plotter = self.plotter(self.graph, start)
         plotter.plot_nodes(s=s, **scatter_kw)
         plotter.plot_edges(**arrow_kw) if arrows else []
         return plotter
 
 
 class GraphAnimator:
-    def __init__(self, graph, start):
+    def __init__(self, graph, plotter=None):
         self.graph = graph
-        self.start = start
-        self.drawer = GraphDrawer(self.graph)
+        self.drawer = GraphDrawer(self.graph, plotter)
         self.plotter = None
 
     def animate(self, fig, transmission,
@@ -210,7 +219,7 @@ class GraphAnimator:
                 yield chunk
 
         def init():
-            self.plotter = self.drawer.draw(self.start, **draw_kw)
+            self.plotter = self.drawer.draw(transmission.originating_node, **draw_kw)
             return self.plotter.artists
 
         return FuncAnimation(fig, update, frames=gen_func, init_func=init, blit=blit)
