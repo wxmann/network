@@ -187,28 +187,31 @@ class GraphDrawer:
         plotter.plot_edges(**arrow_kw) if arrows else []
         return plotter
 
+    @property
+    def animate(self):
+        return GraphAnimator(self)
+
 
 class GraphAnimator:
-    def __init__(self, graph, plotter=None):
-        self.graph = graph
-        self.drawer = GraphDrawer(self.graph, plotter)
-        self.plotter = None
+    def __init__(self, drawer):
+        self.drawer = drawer
+        self._plotter = None
 
-    def animate(self, fig, transmission,
-                every=3, max_frames=None,
-                marked_color='red', blit=True,
-                **draw_kw):
+    def __call__(self, transmission, fig=None,
+                 every=3, max_frames=None,
+                 marked_color='red', blit=True,
+                 **draw_kw):
 
         def update(edges_traversed):
             if not edges_traversed:
-                self.plotter.set_node(transmission.originating_node, marked_color)
+                self._plotter.set_node(transmission.originating_node, marked_color)
             else:
                 for edge in edges_traversed:
-                    self.plotter.set_edge(edge, marked_color)
-                    self.plotter.set_node(edge.from_node, marked_color)
-                    self.plotter.set_node(edge.to_node, marked_color)
-            self.plotter.refresh(for_blit=blit)
-            return self.plotter.artists
+                    self._plotter.set_edge(edge, marked_color)
+                    self._plotter.set_node(edge.from_node, marked_color)
+                    self._plotter.set_node(edge.to_node, marked_color)
+            self._plotter.refresh(for_blit=blit)
+            return self._plotter.artists
 
         def gen_func():
             yield None
@@ -219,10 +222,11 @@ class GraphAnimator:
                 yield chunk
 
         def init():
-            self.plotter = self.drawer.draw(transmission.originating_node, **draw_kw)
-            return self.plotter.artists
+            self._plotter = self.drawer.draw(transmission.originating_node, **draw_kw)
+            return self._plotter.artists
 
-        return FuncAnimation(fig, update, frames=gen_func, init_func=init, blit=blit)
+        return FuncAnimation(fig or plt.gcf(), update,
+                             frames=gen_func, init_func=init, blit=blit)
 
 
 def chunks(lst, n):
