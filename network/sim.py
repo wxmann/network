@@ -26,6 +26,8 @@ def random_graph(n_nodes, param_generator):
 
 class Transmission:
     def __init__(self, path, metadata=None):
+        if len(path) < 1:
+            raise ValueError('Path must be a list or tuple with entries')
         self.path = path
         self._metadata = metadata or {}
 
