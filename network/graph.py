@@ -148,7 +148,3 @@ class Graph:
                 traversed_nodes.update(this_deg_nodes)
             tracked_deg_nodes = this_deg_nodes
             yield tracked_deg_nodes
-
-    def draw(self, start, **kwargs):
-        drawer = GraphDrawer(self)
-        return drawer.draw(start, **kwargs)

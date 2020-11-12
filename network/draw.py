@@ -170,19 +170,15 @@ class GraphDrawer:
         self.graph = graph
         self.plotter = plotter or _BaseGraphPlotter
 
-    @staticmethod
-    def _default_kwargs(arrow_kw):
+    def draw(self, start, s=40, linewidth=1, arrows=True, arrow_kw=None,
+             plotter_inst=None):
         if arrow_kw is None:
             arrow_kw = dict(
                 head_width=10,
                 head_length=15,
                 overhang=0.75
             )
-        return arrow_kw
-
-    def draw(self, start, s=40, linewidth=1, arrows=True, arrow_kw=None):
-        arrow_kw = GraphDrawer._default_kwargs(arrow_kw)
-        plotter = self.plotter(self.graph, start)
+        plotter = plotter_inst or self.plotter(self.graph, start)
         plotter.plot_nodes(s=s)
         plotter.plot_edges(linewidth=linewidth, **arrow_kw) if arrows else []
         return plotter
@@ -197,10 +193,7 @@ class GraphAnimator:
         self.drawer = drawer
         self._plotter = None
 
-    def frame(self, n, transmission, marked_color='red',
-              s=40, linewidth=1, arrow_kw=None):
-        arrow_kw = GraphDrawer._default_kwargs(arrow_kw)
-
+    def frame(self, n, transmission, marked_color='red', **draw_kw):
         plotter = self.drawer.plotter(self.drawer.graph, transmission.originating_node)
         for i, edge in enumerate(transmission.path):
             if i >= n:
@@ -209,9 +202,8 @@ class GraphAnimator:
             plotter.set_node(edge.from_node, marked_color)
             plotter.set_node(edge.to_node, marked_color)
         plotter.refresh(True)
-
-        plotter.plot_edges(linewidth=linewidth, **arrow_kw)
-        plotter.plot_nodes(s=s)
+        return self.drawer.draw(transmission.originating_node, plotter_inst=plotter,
+                                **draw_kw)
 
     def __call__(self, transmission, fig=None,
                  every=3, max_frames=None,
