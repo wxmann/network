@@ -11,6 +11,9 @@ class _Edge:
     def attrs(self):
         return dict(self._attrs)
 
+    def get(self, item):
+        return self._attrs.get(item, None)
+
     def __getattr__(self, item):
         try:
             return self._attrs[item]
@@ -64,6 +67,11 @@ class Graph:
 
     def contains_edge(self, edge):
         return self._get_edge(edge) is not Graph._UNDEFINED_NODE
+
+    def add_node(self, node):
+        if self.contains_node(node):
+            raise ValueError(f'Graph already contains node {node}')
+        self._nodes[node] = {}
 
     def add_edge(self, edge, **attrs):
         if self.contains_edge(edge):
