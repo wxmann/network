@@ -1,7 +1,7 @@
 import unittest
 
-from graph import Graph
-from draw import GraphDrawer, _spans
+from network.graph import Graph
+from network.draw import GraphDrawer, _spans
 
 
 class TestGraphDrawer(unittest.TestCase):

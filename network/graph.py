@@ -1,4 +1,4 @@
-from draw import GraphDrawer
+from network.draw import GraphDrawer
 
 
 class _Edge:

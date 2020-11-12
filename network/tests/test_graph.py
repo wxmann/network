@@ -1,7 +1,7 @@
 import unittest
 from collections import namedtuple
 
-from graph import Graph
+from network.graph import Graph
 
 
 class TestGraph(unittest.TestCase):

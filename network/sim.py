@@ -1,7 +1,7 @@
 from random import choice, sample, random
 
-from graph import Graph
-from draw import GraphAnimator
+from network.graph import Graph
+from network.draw import GraphAnimator
 
 
 class Simulation:
