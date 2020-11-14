@@ -1,6 +1,3 @@
-from network.draw import GraphDrawer
-
-
 class _Edge:
     def __init__(self, from_node, to_node, **kwargs):
         self.from_node = from_node

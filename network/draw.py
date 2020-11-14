@@ -92,7 +92,7 @@ class GraphPlotter:
             yield node, _NodePoint(x, y, color='blue')
 
     def _iter_edgelines(self):
-        for edge in self._graph.traverse_edges(self._start):
+        for edge in self._graph.iter_edges():
             start_pt = self._node_map[edge.from_node]
             end_pt = self._node_map[edge.to_node]
             x1, y1 = start_pt.x, start_pt.y
