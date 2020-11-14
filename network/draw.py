@@ -54,12 +54,13 @@ class _NodePoint:
 
 
 class _EdgeLine:
-    def __init__(self, x1, y1, dx, dy, color):
+    def __init__(self, x1, y1, dx, dy, color, linewidth=None):
         self.x1 = x1
         self.y1 = y1
         self.dx = dx
         self.dy = dy
         self.color = color
+        self.linewidth = linewidth or 1.0
 
 
 class GraphPlotter:
@@ -141,15 +142,26 @@ class GraphPlotter:
             **additional_kw
         )
 
-    def plot_edges(self, **additional_kw):
+    def plot_edges(self, linewidth=None, **additional_kw):
         self._arrows = {}
         for edge, edgeline in self._edge_map.items():
+            GraphPlotter._set_linewidth(edge, edgeline, linewidth)
             arrow = plt.arrow(edgeline.x1, edgeline.y1,
                               edgeline.dx, edgeline.dy,
                               length_includes_head=True,
                               color=edgeline.color,
+                              linewidth=edgeline.linewidth,
                               **additional_kw)
             self._arrows[edge] = arrow
+
+    @staticmethod
+    def _set_linewidth(edge, edgeline, linewidth):
+        if linewidth is not None:
+            if edge.strength is not None and isinstance(linewidth, tuple):
+                minwidth, maxwidth = linewidth
+                edgeline.linewidth = edge.strength * (maxwidth - minwidth) + minwidth
+            else:
+                edgeline.linewidth = linewidth
 
     def set_node(self, node, new_color):
         self._node_map[node].color = new_color

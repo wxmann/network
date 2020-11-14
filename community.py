@@ -101,7 +101,8 @@ class CommunityNodePositions:
 
     def _random_coord_within(self, sq):
         x0, y0 = self._ctr_coords_for(sq)
-        dr = random.gauss(mu=0, sigma=self.r * 1.5)
+        # dr = random.gauss(mu=0, sigma=self.r * 1.5)
+        dr = self.r * 1.5 * random.betavariate(1.33, 1.33)
         dtheta = random.uniform(0, 2 * math.pi)
         dx = dr * math.cos(dtheta)
         dy = dr * math.sin(dtheta)
