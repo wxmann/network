@@ -7,7 +7,10 @@ from network.sim import test
 
 
 def community_graph(n_communities, community_size, orphans,
-                    n_participants=3, n_fringes=10):
+                    n_participants=3, n_fringes=10, core_p_connect=0.75,
+                    core_kw=None, participant_kw=None, fringe_kw=None):
+
+    core_kw, participant_kw, fringe_kw = _parse_kw(core_kw, participant_kw, fringe_kw)
     node_index = 0
     graph = Graph()
     node_community_map = {}
@@ -30,9 +33,8 @@ def community_graph(n_communities, community_size, orphans,
         for node in comm_nodes:
             node_community_map[node] = comm
         for edge in combinations(comm_nodes, 2):
-            if test(0.65):
-                add_bidirectional_edge(edge, p_follow_back=0.75,
-                                       strength=0.7, kind='core')
+            if test(core_p_connect):
+                add_bidirectional_edge(edge, kind='core', **core_kw)
         node_index += community_size
 
     # add orphans
@@ -54,12 +56,31 @@ def community_graph(n_communities, community_size, orphans,
     addtl_conns = random.sample(edge_combos, n_participants_tot + n_fringes_tot)
 
     for participant_edge in addtl_conns[0:n_participants_tot]:
-        add_bidirectional_edge(participant_edge, strength=0.35, kind='participant')
+        add_bidirectional_edge(participant_edge, kind='participant', **participant_kw)
 
     for fringe_edge in addtl_conns[n_participants_tot:]:
-        add_bidirectional_edge(fringe_edge, strength=0.1, kind='fringe')
+        add_bidirectional_edge(fringe_edge, kind='fringe', **fringe_kw)
 
     return graph, node_community_map
+
+
+def _parse_kw(core_kw, participant_kw, fringe_kw):
+    if not core_kw:
+        core_kw = dict(
+            p_follow_back=0.7,
+            strength=0.7
+        )
+    if not participant_kw:
+        participant_kw = dict(
+            p_follow_back=0.5,
+            strength=0.5
+        )
+    if not fringe_kw:
+        fringe_kw = dict(
+            p_follow_back=0.3,
+            strength=0.3
+        )
+    return core_kw, participant_kw, fringe_kw
 
 
 class CommunityNodePositions:

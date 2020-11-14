@@ -1,4 +1,4 @@
-from random import sample, random
+from random import sample, random, betavariate
 
 from network.graph import Graph
 
@@ -43,3 +43,17 @@ class Transmission:
 def test(p):
     assert 0 <= p <= 1
     return random() < p
+
+
+def beta_rv(mean, sd):
+    return betavariate(*beta_params(mean, sd))
+
+
+def beta_params(mean, sd):
+    u = mean
+    s2 = sd ** 2
+    alpha = (-u ** 3 + u ** 2 - u * s2) / s2
+    beta = (u ** 3 - 2 * u ** 2 + u * s2 + u - s2) / s2
+    if alpha < 0 or beta < 0:
+        raise ValueError(f'cannot calculate alpha/beta for mean {mean} and sd {sd}')
+    return alpha, beta
