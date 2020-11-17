@@ -1,4 +1,4 @@
-from random import sample, random, betavariate
+import random
 
 from network.graph import Graph
 
@@ -17,7 +17,7 @@ def random_graph(n_nodes, param_generator):
         edges_to_build = param_generator.follow_count(n_nodes)
         pool = set(graph.nodes)
         pool.remove(node)
-        for node_to_follow in sample(pool, edges_to_build):
+        for node_to_follow in random.sample(pool, edges_to_build):
             graph.add_edge(edge=(node_to_follow, node),
                            strength=param_generator.edge_strength())
 
@@ -41,12 +41,40 @@ class Transmission:
 
 
 def test(p):
-    assert 0 <= p <= 1
-    return random() < p
+    if callable(p):
+        return random.random() < p()
+    elif 0 <= p <= 1:
+        return random.random() < p
+    else:
+        raise ValueError('p must be between 0 and 1')
 
 
-def beta_rv(mean, sd):
-    return betavariate(*beta_params(mean, sd))
+def beta_rv(a, b):
+    return _RV(random.betavariate, a=a, b=b)
+
+
+def uniform_rv(a, b):
+    return _RV(random.uniform, a=a, b=b)
+
+
+class _RV:
+    def __init__(self, func, **kwargs):
+        self._func = func
+        self._kwargs = kwargs
+        self._factor = 1
+
+    @property
+    def params(self):
+        return dict(self._kwargs)
+
+    def __call__(self):
+        return self._factor * self._func(*self._kwargs.values())
+
+    def __mul__(self, other):
+        self._factor = other
+
+    def __rmul__(self, other):
+        self._factor = other
 
 
 def beta_params(mean, sd):
