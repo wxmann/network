@@ -49,13 +49,13 @@ class _RandomSet:
         self._items = set()
 
     def empty(self):
-        return not bool(self._items)
+        return len(self._items) == 0
 
     def add(self, item):
         self._items.add(item)
 
     def remove(self):
-        if not self._items:
+        if self.empty():
             raise IndexError
         random_item = random.sample(self._items, 1)[0]
         self._items.remove(random_item)

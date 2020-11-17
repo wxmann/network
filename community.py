@@ -3,7 +3,7 @@ import random
 from itertools import combinations, permutations
 
 from network.graph import Graph
-from network.sim import test, fix_random
+from network.sim import test, fixed_random
 
 
 def community_graph(n_communities, community_size, orphans,
@@ -84,7 +84,7 @@ def _parse_kw(core_kw, participant_kw, fringe_kw):
 
 
 class CommunityNodePositions:
-    def __init__(self, node_community_map, dim=1000, sparseness=2):
+    def __init__(self, node_community_map, dim=1000, sparseness=2, random=None):
         assert sparseness >= 1
         self.node_community_map = node_community_map
         self.n_comm = len(set(node_community_map.values()))
@@ -94,7 +94,7 @@ class CommunityNodePositions:
         self.sparseness = sparseness
         self.r = dim / (2 * self.side_len)
         self.dim = dim
-        self._random = random.Random()
+        self._random = random or fixed_random()
 
     def _ctr_coords_for(self, sq):
         x, y = sq
@@ -110,15 +110,14 @@ class CommunityNodePositions:
         return x0 + dx, y0 + dy
 
     def __call__(self, graph, start):
-        with fix_random(self._random):
-            grid = list(permutations(range(self.side_len), 2))
-            selected_sq = list(self._random.sample(grid, self.n_comm))
-            not_selected = [sq for sq in grid if sq not in selected_sq]
+        grid = list(permutations(range(self.side_len), 2))
+        selected_sq = list(self._random.sample(grid, self.n_comm))
+        not_selected = [sq for sq in grid if sq not in selected_sq]
 
-            for node in graph.nodes:
-                if node in self.node_community_map:
-                    comm = self.node_community_map[node]
-                    yield node, self._random_coord_within(selected_sq[comm])
-                else:
-                    random_sq = self._random.choice(not_selected)
-                    yield node, self._random_coord_within(random_sq)
+        for node in graph.nodes:
+            if node in self.node_community_map:
+                comm = self.node_community_map[node]
+                yield node, self._random_coord_within(selected_sq[comm])
+            else:
+                random_sq = self._random.choice(not_selected)
+                yield node, self._random_coord_within(random_sq)

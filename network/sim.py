@@ -97,6 +97,12 @@ def get_fixed_state():
         return pickle.load(f)
 
 
+def fixed_random():
+    rand = random.Random()
+    rand.setstate(get_fixed_state())
+    return rand
+
+
 @contextmanager
 def fix_random(rand=None, state=None):
     random_ = rand or random
