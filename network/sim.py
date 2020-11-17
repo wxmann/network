@@ -91,14 +91,19 @@ def beta_params(mean, sd):
     return alpha, beta
 
 
+def get_fixed_state():
+    pkl_dir = Path(__file__).resolve().parent
+    with open(f'{pkl_dir}/sim_state.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
 @contextmanager
-def fix_random():
-    saved_state = random.getstate()
+def fix_random(rand=None, state=None):
+    random_ = rand or random
+    saved_state = random_.getstate()
     try:
-        pkl_dir = Path(__file__).resolve().parent
-        with open(f'{pkl_dir}/sim_state.pkl', 'rb') as f:
-            fixed_state = pickle.load(f)
-            random.setstate(fixed_state)
-            yield
+        fixed_state = state or get_fixed_state()
+        random_.setstate(fixed_state)
+        yield
     finally:
-        random.setstate(saved_state)
+        random_.setstate(saved_state)
