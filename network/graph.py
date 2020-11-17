@@ -1,3 +1,6 @@
+import random
+
+
 class _Edge:
     def __init__(self, from_node, to_node, **kwargs):
         self.from_node = from_node
@@ -39,6 +42,24 @@ class _Queue:
         item = self._items[self._init_index]
         self._init_index += 1
         return item
+
+
+class _RandomSet:
+    def __init__(self):
+        self._items = set()
+
+    def empty(self):
+        return not bool(self._items)
+
+    def add(self, item):
+        self._items.add(item)
+
+    def remove(self):
+        if not self._items:
+            raise IndexError
+        random_item = random.sample(self._items, 1)[0]
+        self._items.remove(random_item)
+        return random_item
 
 
 class Graph:
@@ -92,28 +113,15 @@ class Graph:
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def transmit(self, from_node, test_broadcast=None, test_edge=None):
+    def transmit(self, from_node, steps=False, test_broadcast=None,
+                 test_edge=None, randomized=False):
         if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
-        queue = _Queue()
-        nodes_broadcasted = set()
-
-        def do_broadcast(node):
-            for child in self._children_for(node):
-                queue.add(self._get_edge((node, child)))
-                nodes_broadcasted.add(node)
-
-        do_broadcast(from_node)
-
-        while not queue.empty():
-            edge = queue.remove()
-            if all([
-                edge.to_node not in nodes_broadcasted,
-                test_edge is None or test_edge(edge),
-                test_broadcast is None or test_broadcast(edge.to_node)
-            ]):
-                yield edge
-                do_broadcast(edge.to_node)
+        itr = _GraphTransmission(self, from_node, test_broadcast,
+                                 test_edge, randomized)
+        if not steps:
+            return (node for (_, node) in itr)
+        return itr
 
     def traverse_edges(self, from_node):
         if from_node not in self._nodes:
@@ -156,3 +164,38 @@ class Graph:
                 traversed_nodes.update(this_deg_nodes)
             tracked_deg_nodes = this_deg_nodes
             yield tracked_deg_nodes
+
+
+class _GraphTransmission:
+    def __init__(self, graph, from_node, test_broadcast, test_edge, randomized):
+        self.graph = graph
+        self.from_node = from_node
+        self.test_edge = test_edge
+        self.test_broadcast = test_broadcast
+        self._bookkeeper = _RandomSet() if randomized else _Queue()
+        self._nodes_broadcasted = set()
+        self._step_index = 0
+
+        self._do_broadcast(self.from_node)
+
+    def __iter__(self):
+        return self
+
+    def _do_broadcast(self, node):
+        for child in self.graph._children_for(node):
+            edge = self.graph._get_edge((node, child))
+            self._bookkeeper.add((self._step_index, edge))
+            self._nodes_broadcasted.add(node)
+        self._step_index += 1
+
+    def __next__(self):
+        while not self._bookkeeper.empty():
+            step, edge = self._bookkeeper.remove()
+            if all([
+                edge.to_node not in self._nodes_broadcasted,
+                self.test_edge is None or self.test_edge(edge),
+                self.test_broadcast is None or self.test_broadcast(edge.to_node)
+            ]):
+                self._do_broadcast(edge.to_node)
+                return step, edge
+        raise StopIteration

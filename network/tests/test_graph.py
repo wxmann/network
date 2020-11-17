@@ -6,6 +6,7 @@ from network.graph import Graph
 
 class TestGraph(unittest.TestCase):
     def setUp(self) -> None:
+        super().setUp()
         self.graph = Graph()
         self.graph.add_edge((1, 2), strength=0.5)
         self.graph.add_edge((2, 1), strength=0.4)
@@ -100,6 +101,58 @@ class TestGraph(unittest.TestCase):
     def test__should_create_a_graph_with_empty_nodes(self):
         graph = Graph(range(10))
         self.assertTupleEqual(tuple(graph.nodes), tuple(range(10)))
+
+
+class TestGraphTransmit(unittest.TestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.graph = Graph()
+        self.graph.add_edge((1, 2))
+        self.graph.add_edge((2, 3))
+        self.graph.add_edge((1, 3))
+        self.graph.add_edge((1, 4))
+        self.graph.add_edge((4, 3))
+        self.graph.add_edge((3, 5))
+        self.graph.add_edge((3, 2))
+        self.graph.add_edge((2, 1))
+
+    def test__should_transmit_through_graph_starting_from_top(self):
+        path = [(edge.from_node, edge.to_node) for edge in self.graph.transmit(1)]
+        self.assertListEqual(path, [
+            (1, 2), (1, 3), (1, 4), (3, 5)
+        ])
+
+    def test__should_transmit_through_graph_starting_from_top_with_steps(self):
+        path = [(step, edge.from_node, edge.to_node)
+                for step, edge in self.graph.transmit(1, steps=True)]
+        self.assertListEqual(path, [
+            (0, 1, 2), (0, 1, 3), (0, 1, 4), (2, 3, 5)
+        ])
+
+# TODO: fix state of random
+    # def test__should_transmit_through_graph_starting_from_top_randomized(self):
+    #     import random
+    #     random.seed(0)
+    #     path = [(step, edge.from_node, edge.to_node)
+    #             for step, edge in self.graph.transmit(1, steps=True, randomized=True)]
+    #     self.assertEqual(len(path), 4)
+    #     print(path)
+    #     for piece in [(1, 2), (1, 3), (1, 4), (3, 5)]:
+    #         self.assertTrue(piece in path)
+
+    def tests__should_transmit_through_graph_starting_from_middle(self):
+        path = [(edge.from_node, edge.to_node) for edge in self.graph.transmit(3)]
+        self.assertListEqual(path, [
+            (3, 5), (3 ,2), (2, 1), (1, 4)
+        ])
+
+    def test__should_transmit_through_graph_starting_from_middle_with_steps(self):
+        path = [(step, edge.from_node, edge.to_node)
+                for step, edge in self.graph.transmit(3, steps=True)]
+        self.assertListEqual(path, [
+            (0, 3, 5), (0, 3 ,2), (2, 2, 1), (3, 1, 4)
+        ])
 
 
 if __name__ == '__main__':
