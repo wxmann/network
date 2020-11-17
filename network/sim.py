@@ -1,4 +1,8 @@
+import pickle
 import random
+
+from contextlib import contextmanager
+from pathlib import Path
 
 from network.graph import Graph
 
@@ -85,3 +89,16 @@ def beta_params(mean, sd):
     if alpha < 0 or beta < 0:
         raise ValueError(f'cannot calculate alpha/beta for mean {mean} and sd {sd}')
     return alpha, beta
+
+
+@contextmanager
+def fix_random():
+    saved_state = random.getstate()
+    try:
+        pkl_dir = Path(__file__).resolve().parent
+        with open(f'{pkl_dir}/sim_state.pkl', 'rb') as f:
+            fixed_state = pickle.load(f)
+            random.setstate(fixed_state)
+            yield
+    finally:
+        random.setstate(saved_state)

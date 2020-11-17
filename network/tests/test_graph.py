@@ -2,6 +2,7 @@ import unittest
 from collections import namedtuple
 
 from network.graph import Graph
+from network.sim import fix_random
 
 
 class TestGraph(unittest.TestCase):
@@ -130,16 +131,13 @@ class TestGraphTransmit(unittest.TestCase):
             (0, 1, 2), (0, 1, 3), (0, 1, 4), (2, 3, 5)
         ])
 
-# TODO: fix state of random
-    # def test__should_transmit_through_graph_starting_from_top_randomized(self):
-    #     import random
-    #     random.seed(0)
-    #     path = [(step, edge.from_node, edge.to_node)
-    #             for step, edge in self.graph.transmit(1, steps=True, randomized=True)]
-    #     self.assertEqual(len(path), 4)
-    #     print(path)
-    #     for piece in [(1, 2), (1, 3), (1, 4), (3, 5)]:
-    #         self.assertTrue(piece in path)
+    def test__should_transmit_through_graph_starting_from_top_randomized(self):
+        with fix_random():
+            path = [(step, edge.from_node, edge.to_node)
+                    for step, edge in self.graph.transmit(1, steps=True, randomized=True)]
+            self.assertListEqual(path, [
+                (0, 1, 3), (1, 3, 5), (0, 1, 4), (1, 3, 2)
+            ])
 
     def tests__should_transmit_through_graph_starting_from_middle(self):
         path = [(edge.from_node, edge.to_node) for edge in self.graph.transmit(3)]
@@ -153,6 +151,12 @@ class TestGraphTransmit(unittest.TestCase):
         self.assertListEqual(path, [
             (0, 3, 5), (0, 3 ,2), (2, 2, 1), (3, 1, 4)
         ])
+
+    def test__should_transmit_through_graph_starting_from_middle_randomized(self):
+        with fix_random():
+            path = [(step, edge.from_node, edge.to_node)
+                    for step, edge in self.graph.transmit(3, steps=True, randomized=True)]
+            self.assertListEqual(path, [(0, 3, 5), (0, 3, 2), (2, 2, 1), (3, 1, 4)])
 
 
 if __name__ == '__main__':
