@@ -173,12 +173,17 @@ class _GraphTransmission:
         self._nodes_broadcasted = set()
         self._step_index = 0
         self._yield_steps = steps
+        self._tests = 0
 
         self._do_broadcast(self.originating_node)
 
     @property
     def broadcasts(self):
         return self._step_index
+
+    @property
+    def tests(self):
+        return self._tests
 
     def __iter__(self):
         return self
@@ -193,8 +198,10 @@ class _GraphTransmission:
     def __next__(self):
         while not self._bookkeeper.empty():
             step, edge = self._bookkeeper.remove()
+            if edge.to_node in self._nodes_broadcasted:
+                continue
+            self._tests += 1
             if all([
-                edge.to_node not in self._nodes_broadcasted,
                 self.test_edge is None or self.test_edge(edge),
                 self.test_broadcast is None or self.test_broadcast(edge.to_node)
             ]):

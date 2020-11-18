@@ -166,6 +166,11 @@ class TestGraphTransmit(unittest.TestCase):
         tuple(transmission)
         self.assertEqual(transmission.broadcasts, 5)
 
+    def test__get_number_of_tests(self):
+        transmission = self.graph.transmit(3)
+        tuple(transmission)
+        self.assertEqual(transmission.tests, 4)
+
 
 if __name__ == '__main__':
     unittest.main()
