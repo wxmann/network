@@ -117,11 +117,8 @@ class Graph:
                  test_edge=None, randomized=False):
         if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
-        itr = _GraphTransmission(self, from_node, test_broadcast,
-                                 test_edge, randomized)
-        if not steps:
-            return (node for (_, node) in itr)
-        return itr
+        return _GraphTransmission(self, from_node, test_broadcast,
+                                  test_edge, randomized, steps)
 
     def traverse_edges(self, from_node):
         if from_node not in self._nodes:
@@ -167,16 +164,21 @@ class Graph:
 
 
 class _GraphTransmission:
-    def __init__(self, graph, from_node, test_broadcast, test_edge, randomized):
+    def __init__(self, graph, from_node, test_broadcast, test_edge, randomized, steps):
         self.graph = graph
-        self.from_node = from_node
+        self.originating_node = from_node
         self.test_edge = test_edge
         self.test_broadcast = test_broadcast
         self._bookkeeper = _RandomSet() if randomized else _Queue()
         self._nodes_broadcasted = set()
         self._step_index = 0
+        self._yield_steps = steps
 
-        self._do_broadcast(self.from_node)
+        self._do_broadcast(self.originating_node)
+
+    @property
+    def broadcasts(self):
+        return self._step_index
 
     def __iter__(self):
         return self
@@ -197,5 +199,7 @@ class _GraphTransmission:
                 self.test_broadcast is None or self.test_broadcast(edge.to_node)
             ]):
                 self._do_broadcast(edge.to_node)
-                return step, edge
+                if self._yield_steps:
+                    return step, edge
+                return edge
         raise StopIteration

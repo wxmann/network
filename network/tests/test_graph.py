@@ -142,21 +142,29 @@ class TestGraphTransmit(unittest.TestCase):
     def tests__should_transmit_through_graph_starting_from_middle(self):
         path = [(edge.from_node, edge.to_node) for edge in self.graph.transmit(3)]
         self.assertListEqual(path, [
-            (3, 5), (3 ,2), (2, 1), (1, 4)
+            (3, 5), (3, 2), (2, 1), (1, 4)
         ])
 
     def test__should_transmit_through_graph_starting_from_middle_with_steps(self):
         path = [(step, edge.from_node, edge.to_node)
                 for step, edge in self.graph.transmit(3, steps=True)]
         self.assertListEqual(path, [
-            (0, 3, 5), (0, 3 ,2), (2, 2, 1), (3, 1, 4)
+            # node 5 broadcasts but no receivers that's where step #2 went
+            (0, 3, 5), (0, 3, 2), (2, 2, 1), (3, 1, 4)
         ])
 
     def test__should_transmit_through_graph_starting_from_middle_randomized(self):
         with fix_random():
             path = [(step, edge.from_node, edge.to_node)
                     for step, edge in self.graph.transmit(3, steps=True, randomized=True)]
-            self.assertListEqual(path, [(0, 3, 5), (0, 3, 2), (2, 2, 1), (3, 1, 4)])
+            self.assertListEqual(path, [
+                (0, 3, 5), (0, 3, 2), (2, 2, 1), (3, 1, 4)
+            ])
+
+    def test__get_number_of_broadcasts(self):
+        transmission = self.graph.transmit(3)
+        tuple(transmission)
+        self.assertEqual(transmission.broadcasts, 5)
 
 
 if __name__ == '__main__':
