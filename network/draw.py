@@ -1,9 +1,10 @@
 import math
-import random
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 from matplotlib.animation import FuncAnimation
+
+from network.sim import fixed_random
 
 
 def _spans(graph, start):
@@ -22,6 +23,7 @@ def _spans(graph, start):
 
 
 def radial_positions(graph, start):
+    random = fixed_random()
     spans = list(_spans(graph, start))
     min_R = 0
     dR = 100
