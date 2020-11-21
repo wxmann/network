@@ -71,22 +71,11 @@ class GraphPlotter:
         self._node_map = dict(self._iter_nodepoints())
         self._edge_map = dict(self._iter_edgelines())
         self._scat = None
-        self._arrows = None
-        self._changed_artists = []
-
-    @property
-    def scat(self):
-        return self._scat
-
-    @property
-    def arrows_list(self):
-        return list(self._arrows.values())
+        self._quiver = None
 
     @property
     def artists(self):
-        if not self._changed_artists:
-            return [self.scat] + self.arrows_list
-        return self._changed_artists
+        return self._scat, self._quiver
 
     def _iter_nodepoints(self):
         for node, (x, y) in self._positions(self._graph, self._start):
@@ -114,25 +103,19 @@ class GraphPlotter:
             to_rgba(facecolor) == to_rgba(edgeline.color)
         ])
 
-    def refresh(self, nodes=True, edges=True, for_blit=True):
-        if for_blit:
-            self._changed_artists = []
-
+    def refresh(self, nodes=True, edges=True):
         if nodes and self._scat is not None:
             self._scat.set_facecolors(
                 tuple(pt.color for pt in self._node_map.values())
             )
-            if for_blit:
-                self._changed_artists.append(self._scat)
 
-        if edges and self._arrows is not None:
-            for edge, patch in self._arrows.items():
-                edgeline = self._edge_map[edge]
-                if not for_blit:
-                    patch.set_color(edgeline.color)
-                elif not GraphPlotter._patch_aligned(patch, edgeline):
-                    patch.set_color(edgeline.color)
-                    self._changed_artists.append(patch)
+        if edges and self._quiver is not None:
+            self._quiver.set_facecolors(
+                tuple(edge.color for edge in self._edge_map.values())
+            )
+            self._quiver.set_color(
+                tuple(to_rgba(edge.color) for edge in self._edge_map.values())
+            )
 
     def plot_nodes(self, **additional_kw):
         self._scat = plt.scatter(
@@ -142,17 +125,41 @@ class GraphPlotter:
             **additional_kw
         )
 
-    def plot_edges(self, linewidth=None, **additional_kw):
-        self._arrows = {}
+    def plot_edges(self, linewidth=None):
+        x, y, u, v, colors, lws = tuple([] for _ in range(6))
+
         for edge, edgeline in self._edge_map.items():
             GraphPlotter._set_linewidth(edge, edgeline, linewidth)
-            arrow = plt.arrow(edgeline.x1, edgeline.y1,
-                              edgeline.dx, edgeline.dy,
-                              length_includes_head=True,
-                              color=edgeline.color,
-                              linewidth=edgeline.linewidth,
-                              **additional_kw)
-            self._arrows[edge] = arrow
+            x.append(edgeline.x1)
+            y.append(edgeline.y1)
+            u.append(edgeline.dx)
+            v.append(edgeline.dy)
+            colors.append(edgeline.color)
+            lws.append(edgeline.linewidth)
+
+        self._quiver = plt.quiver(x, y, u, v, angles='xy', scale_units='xy', scale=1,
+                                  **GraphPlotter._generate_quiver_kw(lws, colors))
+
+    @staticmethod
+    def _generate_quiver_kw(lws, colors):
+        # HACK: reducing width and increasing lw param allows lw < 1.0 to be plotted
+        factor = 200
+        width = 0.005 / factor
+        if not lws:
+            lws = None
+            min_lw = 1.0
+        else:
+            min_lw = min(lws)
+
+        return dict(
+            lw=lws * factor,
+            edgecolors=colors,
+            color=colors,
+            width=width,
+            headwidth=3 * factor * min_lw,
+            headlength=5 * factor * min_lw,
+            headaxislength=3.5 * factor * min_lw
+        )
 
     @staticmethod
     def _set_linewidth(edge, edgeline, linewidth):
@@ -179,17 +186,10 @@ class GraphDrawer:
     def _generate_plotter(self, start):
         return GraphPlotter(self.graph, start, self._positions)
 
-    def draw(self, start, s=40, linewidth=1, arrows=True, arrow_kw=None,
-             plotter_inst=None):
-        if arrow_kw is None:
-            arrow_kw = dict(
-                head_width=10,
-                head_length=15,
-                overhang=0.75
-            )
+    def draw(self, start, s=40, linewidth=1, arrows=True, plotter_inst=None):
         plotter = plotter_inst or self._generate_plotter(start)
         plotter.plot_nodes(s=s)
-        plotter.plot_edges(linewidth=linewidth, **arrow_kw) if arrows else []
+        plotter.plot_edges(linewidth=linewidth) if arrows else []
         return plotter
 
     @property
@@ -211,15 +211,14 @@ class GraphAnimator:
             plotter.set_edge(edge, marked_color)
             plotter.set_node(edge.from_node, marked_color)
             plotter.set_node(edge.to_node, marked_color)
-        plotter.refresh(True)
+        plotter.refresh()
 
         return self.drawer.draw(transmission.originating_node,
                                 plotter_inst=plotter, **draw_kw)
 
     def __call__(self, transmission, fig=None,
                  every=3, max_frames=None,
-                 marked_color='red', blit=True,
-                 **draw_kw):
+                 marked_color='red', **draw_kw):
 
         def update(edges_traversed):
             if not edges_traversed:
@@ -229,7 +228,7 @@ class GraphAnimator:
                     self._plotter.set_edge(edge, marked_color)
                     self._plotter.set_node(edge.from_node, marked_color)
                     self._plotter.set_node(edge.to_node, marked_color)
-            self._plotter.refresh(for_blit=blit)
+            self._plotter.refresh()
             return self._plotter.artists
 
         def gen_func():
@@ -245,7 +244,7 @@ class GraphAnimator:
             return self._plotter.artists
 
         return FuncAnimation(fig or plt.gcf(), update,
-                             frames=gen_func, init_func=init, blit=blit)
+                             frames=gen_func, init_func=init, blit=False)
 
 
 def chunks(lst, n):
