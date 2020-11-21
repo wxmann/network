@@ -1,6 +1,3 @@
-import random
-
-
 class _Edge:
     def __init__(self, from_node, to_node, **kwargs):
         self.from_node = from_node
@@ -45,8 +42,9 @@ class _Queue:
 
 
 class _RandomSet:
-    def __init__(self):
+    def __init__(self, random_):
         self._items = set()
+        self._random = random_
 
     def empty(self):
         return len(self._items) == 0
@@ -57,7 +55,7 @@ class _RandomSet:
     def remove(self):
         if self.empty():
             raise IndexError
-        random_item = random.sample(self._items, 1)[0]
+        random_item = self._random.sample(self._items, 1)[0]
         self._items.remove(random_item)
         return random_item
 
@@ -113,12 +111,10 @@ class Graph:
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
 
-    def transmit(self, from_node, steps=False, test_broadcast=None,
-                 test_edge=None, randomized=False):
+    def transmit(self, from_node, steps=False, test_transmit=None, randomized=False):
         if from_node not in self._nodes:
             raise ValueError(f'Node {from_node} does not exist in this graph')
-        return _GraphTransmission(self, from_node, test_broadcast,
-                                  test_edge, randomized, steps)
+        return _GraphTransmission(self, from_node, test_transmit, randomized, steps)
 
     def traverse_edges(self, from_node):
         if from_node not in self._nodes:
@@ -164,18 +160,26 @@ class Graph:
 
 
 class _GraphTransmission:
-    def __init__(self, graph, from_node, test_broadcast, test_edge, randomized, steps):
+    def __init__(self, graph, from_node, test_transmit, randomized, steps):
         self.graph = graph
         self.originating_node = from_node
-        self.test_edge = test_edge
-        self.test_broadcast = test_broadcast
-        self._bookkeeper = _RandomSet() if randomized else _Queue()
+        self.test_transmit = test_transmit
+        self._bookkeeper = _GraphTransmission._bookkeeper(randomized)
         self._nodes_broadcasted = set()
         self._step_index = 0
         self._yield_steps = steps
         self._tests = 0
 
         self._do_broadcast(self.originating_node)
+
+    @staticmethod
+    def _bookkeeper(randomized):
+        if randomized:
+            import random
+            if isinstance(randomized, random.Random):
+                return _RandomSet(randomized)
+            return _RandomSet(random)
+        return _Queue()
 
     @property
     def broadcasts(self):
@@ -201,10 +205,7 @@ class _GraphTransmission:
             if edge.to_node in self._nodes_broadcasted:
                 continue
             self._tests += 1
-            if all([
-                self.test_edge is None or self.test_edge(edge),
-                self.test_broadcast is None or self.test_broadcast(edge.to_node)
-            ]):
+            if self.test_transmit is None or self.test_transmit(self, edge):
                 self._do_broadcast(edge.to_node)
                 if self._yield_steps:
                     return step, edge

@@ -7,10 +7,12 @@ from pathlib import Path
 from network.graph import Graph
 
 
-def run_simulation(graph, start, test_broadcast=None,
-                   test_edge=None, metadata=None):
-    transmission = graph.transmit(start, test_broadcast=test_broadcast,
-                                  test_edge=test_edge)
+def run_simulation(graph, start, test_transmit=None,
+                   metadata=None, random_=None):
+    if random_ is None:
+        random_ = random.Random()
+    transmission = graph.transmit(start, test_transmit=test_transmit,
+                                  randomized=random_)
     return Transmission(tuple(transmission), metadata)
 
 
