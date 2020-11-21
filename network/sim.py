@@ -93,7 +93,7 @@ def beta_params(mean, sd):
 
 def get_fixed_state():
     pkl_dir = Path(__file__).resolve().parent
-    with open(f'{pkl_dir}/sim_state.pkl', 'rb') as f:
+    with open(f'{pkl_dir}/resources/sim_state.pkl', 'rb') as f:
         return pickle.load(f)
 
 
