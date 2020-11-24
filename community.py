@@ -84,7 +84,7 @@ def _parse_kw(core_kw, participant_kw, fringe_kw):
 
 
 class CommunityNodePositions:
-    def __init__(self, node_community_map, dim=1000, sparseness=2, random=None):
+    def __init__(self, node_community_map, dim=1000, sparseness=2, random_=None):
         assert sparseness >= 1
         self.node_community_map = node_community_map
         self.n_comm = len(set(node_community_map.values()))
@@ -94,7 +94,7 @@ class CommunityNodePositions:
         self.sparseness = sparseness
         self.r = dim / (2 * self.side_len)
         self.dim = dim
-        self._random = random or fixed_random()
+        self._random = random_ or fixed_random()
 
     def _ctr_coords_for(self, sq):
         x, y = sq
