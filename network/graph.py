@@ -1,6 +1,3 @@
-from network.transmission import GraphTransmission, FIFOSelector, RandomSelector
-
-
 class _Edge:
     def __init__(self, from_node, to_node, **kwargs):
         self.from_node = from_node
@@ -77,12 +74,6 @@ class Graph:
         if not self.contains_edge(edge):
             raise ValueError(f'Edge {edge} does not exist')
         return self._get_edge(edge).attrs
-
-    def transmit(self, from_node, test_transmit=None, randomized=False):
-        if from_node not in self._nodes:
-            raise ValueError(f'Node {from_node} does not exist in this graph')
-        selector = RandomSelector() if randomized else FIFOSelector()
-        return GraphTransmission(self, from_node, test_transmit, selector)
 
     def _children_for(self, node_index, predicate=None):
         return (node for node in self._nodes[node_index]

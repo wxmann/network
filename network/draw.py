@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 from matplotlib.animation import FuncAnimation
 
-from network.sim import fixed_random
+from network.randoms import fixed_random
 
 
 def _spans(graph, start):

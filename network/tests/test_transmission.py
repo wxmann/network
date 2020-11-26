@@ -2,7 +2,7 @@ import unittest
 
 from network.graph import Graph
 from network.transmission import GraphTransmission, FIFOSelector, RandomSelector, DelayedSelector
-from network.sim import fix_random
+from network.randoms import fix_random
 
 
 class TestGraphTransmission(unittest.TestCase):

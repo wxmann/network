@@ -1,5 +1,7 @@
 class GraphTransmission:
     def __init__(self, graph, from_node, selector, test_transmit=None):
+        if not graph.contains_node(from_node):
+            raise ValueError(f'Node {from_node} does not exist in this graph')
         self.graph = graph
         self.originating_node = from_node
         self.test_transmit = test_transmit
