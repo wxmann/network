@@ -1,5 +1,5 @@
 class GraphTransmission:
-    def __init__(self, graph, from_node, test_transmit, selector):
+    def __init__(self, graph, from_node, selector, test_transmit=None):
         self.graph = graph
         self.originating_node = from_node
         self.test_transmit = test_transmit
@@ -11,8 +11,12 @@ class GraphTransmission:
         self._do_broadcast(self.originating_node)
 
     @property
-    def broadcasts(self):
+    def steps(self):
         return self._step_index
+
+    @property
+    def broadcasts(self):
+        return len(self._nodes_broadcasted)
 
     @property
     def tests(self):
@@ -25,9 +29,9 @@ class GraphTransmission:
         for edge in self.graph.outbound_edges(node):
             self._selector.add(edge)
             self._nodes_broadcasted.add(node)
-        self._step_index += 1
 
     def __next__(self):
+        self._step_index += 1
         while not self._selector.empty():
             edges = []
             for edge in self._selector.remove():
@@ -36,10 +40,35 @@ class GraphTransmission:
                     if self.test_transmit is None or self.test_transmit(self, edge):
                         self._do_broadcast(edge.to_node)
                         edges.append(edge)
-            if not edges:
-                continue
             return tuple(edges)
         raise StopIteration
+
+
+# class Selector:
+#     def __init__(self, items):
+#         self._items = items
+#
+#     def empty(self):
+#         return len(self._items) == 0
+#
+#     def add(self, item):
+#         if isinstance(self._items, list):
+#             self._items.append(item)
+#         elif isinstance(self._items, set):
+#             self._items.add(item)
+#         else:
+#             raise ValueError('can only ad item to list or set')
+#
+#     def _pick(self):
+#         raise NotImplementedError
+#
+#     def __iter__(self):
+#         return self
+#
+#     def __next__(self):
+#         if self.empty():
+#             raise StopIteration
+#         return self._pick()
 
 
 class FIFOSelector:
@@ -60,10 +89,11 @@ class FIFOSelector:
 
 
 class RandomSelector:
-    def __init__(self, random_=None):
+    def __init__(self, random=None, n=1):
         import random as default_random
         self._items = set()
-        self._random = random_ or default_random
+        self._random = random or default_random
+        self.n = n
 
     def empty(self):
         return len(self._items) == 0
@@ -74,9 +104,11 @@ class RandomSelector:
     def remove(self):
         if self.empty():
             raise IndexError
-        random_item = self._random.sample(self._items, 1)[0]
-        self._items.remove(random_item)
-        return random_item,
+        npick = self.n() if callable(self.n) else self.n
+        picked = self._random.sample(self._items, min(npick, len(self._items)))
+        for item in picked:
+            self._items.discard(item)
+        return picked
 
 
 class DelayedSelector:
