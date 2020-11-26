@@ -109,13 +109,13 @@ class DelayedSelector(Selector):
 
     def add(self, item):
         lag_time = self.lag() if callable(self.lag) else self.lag
-        item_with_lag_counter = (self._time_counter, lag_time, item)
+        item_with_lag_counter = (self._time_counter + lag_time, item)
         super(DelayedSelector, self).add(item_with_lag_counter)
 
     def _pick(self):
-        items_to_pick = [(t0, dt, item) for (t0, dt, item) in self._items
-                         if self._time_counter == t0 + dt]
+        items_to_pick = [(t, item) for (t, item) in self._items
+                         if self._time_counter == t]
         for picked in items_to_pick:
             self._items.discard(picked)
         self._time_counter += 1
-        return tuple(item for (t0, dt, item) in items_to_pick)
+        return tuple(item for (t, item) in items_to_pick)

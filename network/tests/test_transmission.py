@@ -71,9 +71,6 @@ class TestFIFOSelector(unittest.TestCase):
         picked_items = tuple(selector)
         self.assertTupleEqual(picked_items, tuple((i,) for i in range(3)))
 
-        with self.assertRaises(StopIteration):
-            next(selector)
-
 
 class TestRandomSelector(unittest.TestCase):
     def test__should_iterate_through_items_random_order(self):
@@ -84,9 +81,6 @@ class TestRandomSelector(unittest.TestCase):
         with fix_random():
             picked_items = tuple(selector)
             self.assertTupleEqual(picked_items, ((1, 2), (0,)))
-
-        with self.assertRaises(StopIteration):
-            next(selector)
 
 
 class TestDelayedSelector(unittest.TestCase):

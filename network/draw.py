@@ -1,3 +1,4 @@
+import itertools
 import math
 
 import matplotlib.pyplot as plt
@@ -204,52 +205,59 @@ class GraphAnimator:
         self.drawer = drawer
         self._plotter = None
 
-    def frame(self, n, transmission, marked_color='red', **draw_kw):
-        plotter = self.drawer._generate_plotter(transmission.originating_node)
+    def frame(self, n, simulation, marked_color='red', **draw_kw):
+        plotter = self.drawer._generate_plotter(simulation.originating_node)
 
-        for i, edge in enumerate(transmission.path):
-            if i >= n:
-                break
-            plotter.set_edge(edge, marked_color)
-            plotter.set_node(edge.from_node, marked_color)
-            plotter.set_node(edge.to_node, marked_color)
+        for segment in simulation.path(n):
+            for edge in segment:
+                plotter.set_edge(edge, marked_color)
+                plotter.set_node(edge.from_node, marked_color)
+                plotter.set_node(edge.to_node, marked_color)
         plotter.refresh()
 
-        return self.drawer.draw(transmission.originating_node,
+        return self.drawer.draw(simulation.originating_node,
                                 plotter_inst=plotter, **draw_kw)
 
-    def __call__(self, transmission, fig=None,
+    def __call__(self, simulation, fig=None,
                  every=3, max_frames=None,
                  marked_color='red', **draw_kw):
 
-        def update(edges_traversed):
-            if not edges_traversed:
-                self._plotter.set_node(transmission.originating_node, marked_color)
+        def update(path):
+            if not path:
+                self._plotter.set_node(simulation.originating_node, marked_color)
             else:
-                for edge in edges_traversed:
-                    self._plotter.set_edge(edge, marked_color)
-                    self._plotter.set_node(edge.from_node, marked_color)
-                    self._plotter.set_node(edge.to_node, marked_color)
+                for segment in path:
+                    for edge in segment:
+                        self._plotter.set_edge(edge, marked_color)
+                        self._plotter.set_node(edge.from_node, marked_color)
+                        self._plotter.set_node(edge.to_node, marked_color)
             self._plotter.refresh()
             return self._plotter.artists
 
         def gen_func():
             yield None
-            chunked = chunks(transmission.path, every)
-            for i, chunk in enumerate(chunked):
-                if max_frames and i >= max_frames:
-                    return
+            for chunk in chunks(simulation.path(max_frames), every):
                 yield chunk
 
         def init():
-            self._plotter = self.drawer.draw(transmission.originating_node, **draw_kw)
+            self._plotter = self.drawer.draw(simulation.originating_node, **draw_kw)
             return self._plotter.artists
 
         return FuncAnimation(fig or plt.gcf(), update,
                              frames=gen_func, init_func=init, blit=False)
 
 
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+def chunks(iterable, n):
+    it = iter(iterable)
+    while True:
+        chunk_it = itertools.islice(it, n)
+        try:
+            first_el = next(chunk_it)
+        except StopIteration:
+            return
+        yield itertools.chain((first_el,), chunk_it)
+
+# def chunks(lst, n):
+#     """Yield successive n-sized chunks from lst."""
+#     for i in range(0, len(lst), n):
+#         yield lst[i:i + n]

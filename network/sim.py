@@ -7,13 +7,13 @@ from pathlib import Path
 from network.graph import Graph
 
 
-def run_simulation(graph, start, test_transmit=None,
-                   metadata=None, random_=None):
-    if random_ is None:
-        random_ = random.Random()
-    transmission = graph.transmit(start, test_transmit=test_transmit,
-                                  randomized=random_)
-    return Transmission(tuple(transmission), metadata)
+# def run_simulation(graph, start, test_transmit=None,
+#                    metadata=None, random_=None):
+#     if random_ is None:
+#         random_ = random.Random()
+#     transmission = graph.transmit(start, test_transmit=test_transmit,
+#                                   randomized=random_)
+#     return Transmission(tuple(transmission), metadata)
 
 
 def random_graph(n_nodes, param_generator):
@@ -30,20 +30,39 @@ def random_graph(n_nodes, param_generator):
     return graph
 
 
-class Transmission:
-    def __init__(self, path, metadata=None):
-        if len(path) < 1:
-            raise ValueError('Path must be a list or tuple with entries')
-        self.path = path
-        self._metadata = metadata or {}
+class Simulation:
+    def __init__(self, transmission, runner=None):
+        self._transmission = transmission
+        if not runner:
+            runner = lambda trans: next(trans)
+        self._runner = runner
+
+        self._saved_path = []
+        self._path_completed = False
+        self._tracked_index = 0
+
+    def _exec_transmission(self, steps):
+        try:
+            while steps is None or self._tracked_index < steps:
+                next_path_segment = self._runner(self._transmission)
+                self._saved_path.append(next_path_segment)
+                self._tracked_index += 1
+        except StopIteration:
+            self._path_completed = True
+
+    def path(self, index=None):
+        if index is None or (not self._path_completed and index >= len(self._saved_path)):
+            self._exec_transmission(index)
+        max_index = len(self._saved_path) if index is None else index
+        return (seg for (i, seg) in enumerate(self._saved_path) if i < max_index)
 
     @property
     def originating_node(self):
-        return self.path[0].from_node
+        return self._transmission.originating_node
 
     @property
-    def metadata(self):
-        return dict(self._metadata)
+    def transmission(self):
+        return self._transmission
 
 
 def test(p):
