@@ -1,7 +1,7 @@
 import unittest
 
 from network.graph import Graph
-from network.transmission import GraphTransmission, FIFOSelector, RandomSelector
+from network.transmission import GraphTransmission, FIFOSelector, RandomSelector, DelayedSelector
 from network.sim import fix_random
 
 
@@ -61,6 +61,52 @@ class TestGraphTransmission(unittest.TestCase):
         transmission = GraphTransmission(self.graph, 3, FIFOSelector())
         tuple(transmission)
         self.assertEqual(transmission.tests, 4)
+
+
+class TestFIFOSelector(unittest.TestCase):
+    def test__should_iterate_through_items_fifo_order(self):
+        selector = FIFOSelector()
+        for i in range(3):
+            selector.add(i)
+        picked_items = tuple(selector)
+        self.assertTupleEqual(picked_items, tuple((i,) for i in range(3)))
+
+        with self.assertRaises(StopIteration):
+            next(selector)
+
+
+class TestRandomSelector(unittest.TestCase):
+    def test__should_iterate_through_items_random_order(self):
+        selector = RandomSelector(n=2)
+        for i in range(3):
+            selector.add(i)
+
+        with fix_random():
+            picked_items = tuple(selector)
+            self.assertTupleEqual(picked_items, ((1, 2), (0,)))
+
+        with self.assertRaises(StopIteration):
+            next(selector)
+
+
+class TestDelayedSelector(unittest.TestCase):
+    def test__should_iterate_through_items_lagged(self):
+        selector = DelayedSelector(lag=2)
+        selector.add(0)
+        selector.add(1)
+        zeroth_item = next(selector)
+        selector.add(2)
+        first_item = next(selector)
+        second_item = next(selector)
+        third_item = next(selector)
+
+        self.assertTupleEqual(zeroth_item, ())
+        self.assertTupleEqual(first_item, ())
+        self.assertTupleEqual(second_item, (0, 1))
+        self.assertTupleEqual(third_item, (2,))
+
+        with self.assertRaises(StopIteration):
+            next(selector)
 
 
 if __name__ == '__main__':

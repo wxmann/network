@@ -11,7 +11,6 @@ class TestGraph(unittest.TestCase):
         self.graph.add_edge((1, 2), strength=0.5)
         self.graph.add_edge((2, 1), strength=0.4)
         self.graph.add_edge((2, 3), strength=0.6)
-        self.dummy_msg = namedtuple('msg', ['originating_node'])
 
     def test__should_retrieve_nodes(self):
         self.assertTupleEqual(tuple(self.graph.nodes), (1, 2, 3))
