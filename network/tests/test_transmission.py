@@ -1,6 +1,7 @@
 import unittest
 
 from network.graph import Graph
+from network.simulation import test as numtest
 from network.transmission import GraphTransmission, FIFOSelector, RandomSelector, DelayedSelector
 from network.randoms import fix_random
 
@@ -55,6 +56,20 @@ class TestGraphTransmission(unittest.TestCase):
                 for step in GraphTransmission(self.graph, 1, DelayedSelector(lag=2))]
 
         self.assertListEqual(path, [[], [], [(1, 2), (1, 4), (1, 3)], [], [], [(3, 5)]])
+
+    def test__should_transmit_fifo_with_persistent_broadcast(self):
+        with fix_random():
+            path = [TestGraphTransmission._nodes_of(step)
+                    for step in GraphTransmission(
+                        self.graph, 1, FIFOSelector(),
+                        persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.5)
+                    )]
+
+        self.assertListEqual(
+            path,
+            [[], [(1, 3)], [(1, 4)], [], [], [], [(3, 5)], [(3, 2)], [], [], [], [], [], [], [], [], [], [], [], [], [],
+             [], [], []]
+        )
 
     def test__get_number_of_broadcasts(self):
         transmission = GraphTransmission(self.graph, 3, FIFOSelector())

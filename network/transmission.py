@@ -1,16 +1,19 @@
 class GraphTransmission:
-    def __init__(self, graph, from_node, selector, test_transmit=None):
+    def __init__(self, graph, from_node, selector, test_transmit=None,
+                 persist_broadcast=False):
         if not graph.contains_node(from_node):
             raise ValueError(f'Node {from_node} does not exist in this graph')
         self.graph = graph
         self.originating_node = from_node
         self.test_transmit = test_transmit
         self._selector = selector
-        self._nodes_broadcasted = set()
+        self._nodes_broadcasted = {}
         self._step_index = 0
         self._tests = 0
+        self._persist_broadcast = persist_broadcast
 
         self._do_broadcast(self.originating_node)
+        self._track_broadcasts([self.originating_node])
 
     @property
     def steps(self):
@@ -28,19 +31,43 @@ class GraphTransmission:
         return self
 
     def _do_broadcast(self, node):
-        self._nodes_broadcasted.add(node)
         for edge in self.graph.outbound_edges(node):
             self._selector.add(edge)
+
+    def _track_broadcasts(self, nodes):
+        for node in nodes:
+            if node not in self._nodes_broadcasted:
+                if callable(self._persist_broadcast):
+                    persist = self._persist_broadcast()
+                elif self._persist_broadcast:
+                    persist = self._persist_broadcast
+                else:
+                    persist = 0
+                self._nodes_broadcasted[node] = persist
+            else:
+                self._nodes_broadcasted[node] -= 1
 
     def __next__(self):
         self._step_index += 1
         edges = []
+        broadcasts = []
+
         for edge in next(self._selector):
             if edge.to_node not in self._nodes_broadcasted:
                 self._tests += 1
                 if self.test_transmit is None or self.test_transmit(self, edge):
                     self._do_broadcast(edge.to_node)
                     edges.append(edge)
+                    broadcasts.append(edge.to_node)
+
+        for broadcast_again in (
+            node for node, broadcasts_left in self._nodes_broadcasted.items() if broadcasts_left > 0
+        ):
+            self._do_broadcast(broadcast_again)
+            broadcasts.append(broadcast_again)
+
+        self._track_broadcasts(broadcasts)
+
         return tuple(edges)
 
 

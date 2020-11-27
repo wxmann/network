@@ -2,7 +2,7 @@ import unittest
 
 from network.graph import Graph
 from network.randoms import fix_random
-from network.simulation import test, Simulation
+from network.simulation import Simulation
 from network.transmission import GraphTransmission, FIFOSelector
 
 
