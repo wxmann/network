@@ -51,20 +51,27 @@ class GraphTransmission:
         self._step_index += 1
         edges = []
         broadcasts = []
+        selector_emptied = False
 
-        for edge in next(self._selector):
-            if edge.to_node not in self._nodes_broadcasted:
-                self._tests += 1
-                if self.test_transmit is None or self.test_transmit(self, edge):
-                    self._do_broadcast(edge.to_node)
-                    edges.append(edge)
-                    broadcasts.append(edge.to_node)
+        try:
+            for edge in next(self._selector):
+                if edge.to_node not in self._nodes_broadcasted:
+                    self._tests += 1
+                    if self.test_transmit is None or self.test_transmit(self, edge):
+                        self._do_broadcast(edge.to_node)
+                        edges.append(edge)
+                        broadcasts.append(edge.to_node)
+        except StopIteration:
+            selector_emptied = True
 
         for broadcast_again in (
             node for node, broadcasts_left in self._nodes_broadcasted.items() if broadcasts_left > 0
         ):
             self._do_broadcast(broadcast_again)
             broadcasts.append(broadcast_again)
+
+        if selector_emptied and not broadcasts and not edges:
+            raise StopIteration
 
         self._track_broadcasts(broadcasts)
 

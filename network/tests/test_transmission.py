@@ -61,15 +61,26 @@ class TestGraphTransmission(unittest.TestCase):
         with fix_random():
             path = [TestGraphTransmission._nodes_of(step)
                     for step in GraphTransmission(
-                        self.graph, 1, FIFOSelector(),
-                        persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.5)
-                    )]
+                    self.graph, 1, FIFOSelector(),
+                    persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.5)
+                )]
 
         self.assertListEqual(
             path,
             [[], [(1, 3)], [(1, 4)], [], [], [], [(3, 5)], [(3, 2)], [], [], [], [], [], [], [], [], [], [], [], [], [],
              [], [], []]
         )
+
+    def test__should_transmit_persistent_broadcast_even_after_emptied(self):
+        one_edge_graph = Graph()
+        one_edge_graph.add_edge((1, 2))
+        path = [TestGraphTransmission._nodes_of(step)
+                for step in GraphTransmission(
+                one_edge_graph, 1, FIFOSelector(),
+                persist_broadcast=2
+            )]
+
+        self.assertListEqual(path, [[(1, 2)], [], []])
 
     def test__get_number_of_broadcasts(self):
         transmission = GraphTransmission(self.graph, 3, FIFOSelector())
