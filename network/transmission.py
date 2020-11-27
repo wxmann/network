@@ -28,9 +28,9 @@ class GraphTransmission:
         return self
 
     def _do_broadcast(self, node):
+        self._nodes_broadcasted.add(node)
         for edge in self.graph.outbound_edges(node):
             self._selector.add(edge)
-            self._nodes_broadcasted.add(node)
 
     def __next__(self):
         self._step_index += 1
@@ -102,12 +102,11 @@ class RandomSelector(Selector):
 
 class DelayedSelector(Selector):
     def __init__(self, lag):
+        if not callable(lag) and lag < 0:
+            raise ValueError('Lag parameter must be a positive integer')
         super().__init__(set())
         self.lag = lag
         self._time_counter = 0
-
-    def empty(self):
-        return len(self._items) == 0
 
     def add(self, item):
         lag_time = self.lag() if callable(self.lag) else self.lag

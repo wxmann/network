@@ -8,6 +8,10 @@ class _Edge:
     def attrs(self):
         return dict(self._attrs)
 
+    @property
+    def nodes(self):
+        return self.from_node, self.to_node
+
     def get(self, item):
         return self._attrs.get(item, None)
 

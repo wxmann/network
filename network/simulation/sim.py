@@ -28,8 +28,9 @@ class Simulation:
     def __init__(self, transmission, runner=None):
         self._transmission = transmission
         if not runner:
-            runner = lambda trans: next(trans)
-        self._runner = runner
+            self._runner = self._transmission
+        else:
+            self._runner = runner(transmission)
 
         self._saved_path = []
         self._path_completed = False
@@ -38,7 +39,7 @@ class Simulation:
     def _exec_transmission(self, steps):
         try:
             while steps is None or self._tracked_index < steps:
-                next_path_segment = self._runner(self._transmission)
+                next_path_segment = next(self._runner)
                 self._saved_path.append(next_path_segment)
                 self._tracked_index += 1
         except StopIteration:

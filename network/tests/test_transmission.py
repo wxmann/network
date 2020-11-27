@@ -8,7 +8,9 @@ from network.randoms import fix_random
 class TestGraphTransmission(unittest.TestCase):
     @staticmethod
     def _nodes_of(step):
-        return step[0].from_node, step[0].to_node
+        return list(
+            edge.nodes for edge in step
+        )
 
     def setUp(self) -> None:
         super().setUp()
@@ -24,38 +26,40 @@ class TestGraphTransmission(unittest.TestCase):
 
     def test__should_transmit_fifo_through_graph_starting_from_top(self):
         path = [TestGraphTransmission._nodes_of(step)
-                for step in GraphTransmission(self.graph, 1, FIFOSelector()) if step]
-        self.assertListEqual(path, [
-            (1, 2), (1, 3), (1, 4), (3, 5)
-        ])
+                for step in GraphTransmission(self.graph, 1, FIFOSelector())]
+
+        self.assertListEqual(path, [[(1, 2)], [(1, 3)], [(1, 4)], [], [], [(3, 5)], [], []])
 
     def test__should_transmit_random_through_graph_starting_from_top(self):
         with fix_random():
             path = [TestGraphTransmission._nodes_of(step)
-                    for step in GraphTransmission(self.graph, 1, RandomSelector()) if step]
-            self.assertListEqual(path, [
-                (1, 3), (3, 5), (1, 4), (1, 2)
-            ])
+                    for step in GraphTransmission(self.graph, 1, RandomSelector())]
+
+            self.assertListEqual(path, [[(1, 3)], [(3, 5)], [(1, 4)], [(1, 2)], [], [], [], []])
 
     def test__should_transmit_fifo_through_graph_starting_from_middle(self):
         path = [TestGraphTransmission._nodes_of(step)
-                for step in GraphTransmission(self.graph, 3, FIFOSelector()) if step]
-        self.assertListEqual(path, [
-            (3, 5), (3, 2), (2, 1), (1, 4)
-        ])
+                for step in GraphTransmission(self.graph, 3, FIFOSelector())]
+
+        self.assertListEqual(path, [[(3, 5)], [(3, 2)], [], [(2, 1)], [], [], [(1, 4)], []])
 
     def test__should_transmit_through_graph_starting_from_middle_randomized(self):
         with fix_random():
             path = [TestGraphTransmission._nodes_of(step)
-                    for step in GraphTransmission(self.graph, 3, RandomSelector()) if step]
-            self.assertListEqual(path, [
-                (3, 5), (3, 2), (2, 1), (1, 4)
-            ])
+                    for step in GraphTransmission(self.graph, 3, RandomSelector())]
+
+            self.assertListEqual(path, [[(3, 5)], [(3, 2)], [], [(2, 1)], [], [(1, 4)], [], []])
+
+    def test__should_transmit_lagged_starting_from_top(self):
+        path = [TestGraphTransmission._nodes_of(step)
+                for step in GraphTransmission(self.graph, 1, DelayedSelector(lag=2))]
+
+        self.assertListEqual(path, [[], [], [(1, 2), (1, 4), (1, 3)], [], [], [(3, 5)]])
 
     def test__get_number_of_broadcasts(self):
         transmission = GraphTransmission(self.graph, 3, FIFOSelector())
         tuple(transmission)
-        self.assertEqual(transmission.broadcasts, 4)
+        self.assertEqual(transmission.broadcasts, 5)
 
     def test__get_number_of_tests(self):
         transmission = GraphTransmission(self.graph, 3, FIFOSelector())
@@ -63,7 +67,7 @@ class TestGraphTransmission(unittest.TestCase):
         self.assertEqual(transmission.tests, 4)
 
 
-class TestFIFOSelector(unittest.TestCase):
+class TestSelectors(unittest.TestCase):
     def test__should_iterate_through_items_fifo_order(self):
         selector = FIFOSelector()
         for i in range(3):
@@ -71,8 +75,6 @@ class TestFIFOSelector(unittest.TestCase):
         picked_items = tuple(selector)
         self.assertTupleEqual(picked_items, tuple((i,) for i in range(3)))
 
-
-class TestRandomSelector(unittest.TestCase):
     def test__should_iterate_through_items_random_order(self):
         selector = RandomSelector(n=2)
         for i in range(3):
@@ -82,8 +84,6 @@ class TestRandomSelector(unittest.TestCase):
             picked_items = tuple(selector)
             self.assertTupleEqual(picked_items, ((1, 2), (0,)))
 
-
-class TestDelayedSelector(unittest.TestCase):
     def test__should_iterate_through_items_lagged(self):
         selector = DelayedSelector(lag=2)
         selector.add(0)
