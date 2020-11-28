@@ -1,87 +1,97 @@
 import math
-import random
 from itertools import combinations, permutations
 
+from network.draw import GraphDrawer
 from network.graph import Graph
-from network.simulation import test
 from network.randoms import fixed_random
+from network.simulation import test
 
 
 def community_graph(n_communities, community_size, orphans,
-                    n_participants=3, n_fringes=10, core_p_connect=0.75,
-                    core_kw=None, participant_kw=None, fringe_kw=None):
+                    n_strong_conns, n_weak_conns, strengths):
+    g = Graph()
+    core_edges, node_community_map = communities(n_communities, community_size)
 
-    core_kw, participant_kw, fringe_kw = _parse_kw(core_kw, participant_kw, fringe_kw)
+    for edge in core_edges:
+        g.add_edge(edge, kind='core', strength=strengths['core'])
+
+    for orphan_node in range(max(node_community_map) + 1, max(node_community_map) + orphans + 1):
+        g.add_node(orphan_node)
+
+    for strong_edge in generate_edges(g, n_strong_conns):
+        g.add_edge(strong_edge, kind='strong', strength=strengths['strong'])
+
+    for weak_edge in generate_edges(g, n_weak_conns):
+        g.add_edge(weak_edge, kind='weak', strength=strengths['weak'])
+
+    return g
+
+
+def generate_edges(graph, n):
+    n_nodes = len(graph.nodes)
+    n_existing_edges = graph.num_edges / 2
+    n_combos_need = n
+    n_combos_exist = n_nodes * (n_nodes - 1) / 2 - n_existing_edges
+
+    if n_combos_need > n_combos_exist:
+        raise ValueError('Too many connections per capita to generate edges')
+    p_take = n_combos_need / n_combos_exist
+
+    for n1, n2 in combinations(graph.nodes, 2):
+        if all([
+            not graph.contains_edge((n1, n2)),
+            not graph.contains_edge((n2, n1)),
+            test(p_take)
+        ]):
+            yield n1, n2
+            yield n2, n1
+            n_combos_need -= 1
+
+        n_combos_exist -= 1
+        if n_combos_exist == 0 or n_combos_need == 0:
+            raise StopIteration
+        p_take = n_combos_need / n_combos_exist
+
+
+def communities(n_communities, community_size):
+    node_community_map = NodeCommunityMap()
     node_index = 0
-    graph = Graph()
-    node_community_map = {}
 
-    # define useful closures
-    def reverse(edge_):
-        x1, x2 = edge_
-        return x2, x1
-
-    def add_bidirectional_edge(edge_, p_follow_back=0.4, **kwargs):
-        start = random.choice([edge_, reverse(edge_)])
-        if not graph.contains_edge(start):
-            graph.add_edge(start, **kwargs)
-        if test(p_follow_back) and not graph.contains_edge(reverse(start)):
-            graph.add_edge(reverse(start), **kwargs)
-
-    # generate core nodes/edges for each community
     for comm in range(n_communities):
         comm_nodes = range(node_index, node_index + community_size)
         for node in comm_nodes:
             node_community_map[node] = comm
-        for edge in combinations(comm_nodes, 2):
-            if test(core_p_connect):
-                add_bidirectional_edge(edge, kind='core', **core_kw)
         node_index += community_size
 
-    # add orphans
-    for node in range(node_index, node_index + orphans):
-        graph.add_node(node)
+    def yielding_community_edges():
+        for comm_nodes in node_community_map.invert().values():
+            for edge in combinations(comm_nodes, 2):
+                yield edge
 
-    # generate participants and fringe
-    n_participants_tot = n_participants * n_communities
-    n_fringes_tot = n_fringes * n_communities
-
-    edge_combos = [edge for edge in combinations(graph.nodes, 2)
-                   if all([
-                        not graph.contains_edge(edge),
-                        not graph.contains_edge(reverse(edge)),
-                        edge[0] != edge[1],
-                        node_community_map.get(edge[0], None) != node_community_map.get(edge[1], '')
-                    ])]
-
-    addtl_conns = random.sample(edge_combos, n_participants_tot + n_fringes_tot)
-
-    for participant_edge in addtl_conns[0:n_participants_tot]:
-        add_bidirectional_edge(participant_edge, kind='participant', **participant_kw)
-
-    for fringe_edge in addtl_conns[n_participants_tot:]:
-        add_bidirectional_edge(fringe_edge, kind='fringe', **fringe_kw)
-
-    return graph, node_community_map
+    return yielding_community_edges(), node_community_map
 
 
-def _parse_kw(core_kw, participant_kw, fringe_kw):
-    if not core_kw:
-        core_kw = dict(
-            p_follow_back=0.7,
-            strength=0.7
-        )
-    if not participant_kw:
-        participant_kw = dict(
-            p_follow_back=0.5,
-            strength=0.5
-        )
-    if not fringe_kw:
-        fringe_kw = dict(
-            p_follow_back=0.3,
-            strength=0.3
-        )
-    return core_kw, participant_kw, fringe_kw
+class NodeCommunityMap(dict):
+    def invert(self):
+        community_to_nodes = {}
+        for node in self:
+            comm = self[node]
+            if comm not in community_to_nodes:
+                community_to_nodes[comm] = []
+            community_to_nodes[comm].append(node)
+        return community_to_nodes
+
+    def is_same_community(self, n1, n2):
+        if n1 not in self or n2 not in self:
+            return False
+        return self[n1] == self[n2]
+
+
+def community_drawer(graph, node_community_map, **positions_kw):
+    return GraphDrawer(
+        graph,
+        positions_func=CommunityNodePositions(node_community_map, **positions_kw)
+    )
 
 
 class CommunityNodePositions:

@@ -40,6 +40,10 @@ class Graph:
     def nodes(self):
         return self._nodes.keys()
 
+    @property
+    def num_edges(self):
+        return sum(len(edges) for edges in self._nodes.values())
+
     def iter_edges(self):
         for node, edges in self._nodes.items():
             for edge in edges.values():

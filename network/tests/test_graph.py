@@ -14,6 +14,14 @@ class TestGraph(unittest.TestCase):
     def test__should_retrieve_nodes(self):
         self.assertTupleEqual(tuple(self.graph.nodes), (1, 2, 3))
 
+    def test__should_get_num_edges(self):
+        self.graph.add_edge((2, 4), strength=0.6)
+        self.graph.add_edge((2, 5), strength=0.6)
+        self.graph.add_edge((4, 6), strength=0.6)
+        self.graph.add_edge((4, 7), strength=0.6)
+
+        self.assertEqual(self.graph.num_edges, 7)
+
     def test__should_test_contains_node(self):
         self.assertTrue(self.graph.contains_node(2))
         self.assertFalse(self.graph.contains_node(5))
