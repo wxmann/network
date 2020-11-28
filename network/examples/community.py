@@ -3,7 +3,8 @@ import random
 from itertools import combinations, permutations
 
 from network.graph import Graph
-from network.sim import test, fixed_random
+from network.simulation import test
+from network.randoms import fixed_random
 
 
 def community_graph(n_communities, community_size, orphans,
