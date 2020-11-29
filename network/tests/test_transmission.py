@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from network.graph import Graph
 from network.simulation import test as numtest
 from network.transmission import GraphTransmission, FIFOSelector, RandomSelector, DelayedSelector
@@ -93,40 +95,41 @@ class TestGraphTransmission(unittest.TestCase):
         self.assertEqual(transmission.tests, 4)
 
 
-class TestSelectors(unittest.TestCase):
-    def test__should_iterate_through_items_fifo_order(self):
-        selector = FIFOSelector()
-        for i in range(3):
-            selector.add(i)
+def test__should_iterate_through_items_fifo_order():
+    selector = FIFOSelector()
+    for i in range(3):
+        selector.add(i)
+    picked_items = tuple(selector)
+    assert picked_items == tuple((i,) for i in range(3))
+
+
+def test__should_iterate_through_items_random_order():
+    selector = RandomSelector(n=2)
+    for i in range(3):
+        selector.add(i)
+
+    with fix_random():
         picked_items = tuple(selector)
-        self.assertTupleEqual(picked_items, tuple((i,) for i in range(3)))
+        assert picked_items == ((1, 2), (0,))
 
-    def test__should_iterate_through_items_random_order(self):
-        selector = RandomSelector(n=2)
-        for i in range(3):
-            selector.add(i)
 
-        with fix_random():
-            picked_items = tuple(selector)
-            self.assertTupleEqual(picked_items, ((1, 2), (0,)))
+def test__should_iterate_through_items_lagged():
+    selector = DelayedSelector(lag=2)
+    selector.add(0)
+    selector.add(1)
+    zeroth_item = next(selector)
+    selector.add(2)
+    first_item = next(selector)
+    second_item = next(selector)
+    third_item = next(selector)
 
-    def test__should_iterate_through_items_lagged(self):
-        selector = DelayedSelector(lag=2)
-        selector.add(0)
-        selector.add(1)
-        zeroth_item = next(selector)
-        selector.add(2)
-        first_item = next(selector)
-        second_item = next(selector)
-        third_item = next(selector)
+    assert zeroth_item == ()
+    assert first_item == ()
+    assert second_item == (0, 1)
+    assert third_item == (2,)
 
-        self.assertTupleEqual(zeroth_item, ())
-        self.assertTupleEqual(first_item, ())
-        self.assertTupleEqual(second_item, (0, 1))
-        self.assertTupleEqual(third_item, (2,))
-
-        with self.assertRaises(StopIteration):
-            next(selector)
+    with pytest.raises(StopIteration):
+        next(selector)
 
 
 if __name__ == '__main__':

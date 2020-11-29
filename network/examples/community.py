@@ -1,10 +1,10 @@
 import math
+import random
 from itertools import combinations, permutations
 
 from network.draw import GraphDrawer
 from network.graph import Graph
 from network.randoms import fixed_random
-from network.simulation import test
 
 
 def community_graph(n_communities, community_size, orphans,
@@ -15,7 +15,8 @@ def community_graph(n_communities, community_size, orphans,
     for edge in core_edges:
         g.add_edge(edge, kind='core', strength=strengths['core'])
 
-    for orphan_node in range(max(node_community_map) + 1, max(node_community_map) + orphans + 1):
+    for orphan_elem in range(orphans):
+        orphan_node = orphan_elem + max(node_community_map) + 1
         g.add_node(orphan_node)
 
     for strong_edge in generate_edges(g, n_strong_conns):
@@ -28,29 +29,25 @@ def community_graph(n_communities, community_size, orphans,
 
 
 def generate_edges(graph, n):
+    # assert graph is undirected
+    for edge in graph.iter_edges():
+        if not graph.contains_edge(reversed(edge.nodes)):
+            raise ValueError('Graph must be reversible/undirected')
+
     n_nodes = len(graph.nodes)
     n_existing_edges = graph.num_edges / 2
-    n_combos_need = n
-    n_combos_exist = n_nodes * (n_nodes - 1) / 2 - n_existing_edges
+    n_combos_exist = int(n_nodes * (n_nodes - 1) / 2 - n_existing_edges)
 
-    if n_combos_need > n_combos_exist:
-        raise ValueError('Too many connections per capita to generate edges')
-    p_take = n_combos_need / n_combos_exist
+    if n > n_combos_exist:
+        raise ValueError('Too many outbound connections per node to generate edges')
 
-    for n1, n2 in combinations(graph.nodes, 2):
-        if all([
-            not graph.contains_edge((n1, n2)),
-            not graph.contains_edge((n2, n1)),
-            test(p_take)
-        ]):
+    chosen_indices = set(random.sample(range(n_combos_exist), n))
+    pool = (c for c in combinations(graph.nodes, 2) if not graph.contains_edge(c))
+
+    for index, (n1, n2) in enumerate(pool):
+        if index in chosen_indices:
             yield n1, n2
             yield n2, n1
-            n_combos_need -= 1
-
-        n_combos_exist -= 1
-        if n_combos_exist == 0 or n_combos_need == 0:
-            raise StopIteration
-        p_take = n_combos_need / n_combos_exist
 
 
 def communities(n_communities, community_size):
@@ -65,7 +62,7 @@ def communities(n_communities, community_size):
 
     def yielding_community_edges():
         for comm_nodes in node_community_map.invert().values():
-            for edge in combinations(comm_nodes, 2):
+            for edge in permutations(comm_nodes, 2):
                 yield edge
 
     return yielding_community_edges(), node_community_map
