@@ -34,11 +34,12 @@ def virus_runner(graph, strengths):
             if test(0.5):
                 strong_edge.update(strength=0)
             else:
-                strong_edge.update(strength=strengths['weak'])
+                strong_edge.update(strength=strengths['strong'])
 
     def runner(transmission):
-        update_strong_edges()
-        yield next(transmission)
-        reset_weak_edges()
+        while True:
+            update_strong_edges()
+            yield next(transmission)
+            reset_weak_edges()
 
     return runner
