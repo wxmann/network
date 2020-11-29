@@ -15,6 +15,9 @@ class _Edge:
     def get(self, item):
         return self._attrs.get(item, None)
 
+    def update(self, **kwargs):
+        self._attrs.update(kwargs)
+
     def __getattr__(self, item):
         try:
             return self._attrs[item]
@@ -77,6 +80,20 @@ class Graph:
 
         if not self.contains_node(to_node):
             self._nodes[to_node] = {}
+
+    def remove_edge(self, edge):
+        if self.contains_edge(edge):
+            from_node, to_node = edge
+            edge = self._nodes[from_node][to_node]
+            del self._nodes[from_node][to_node]
+            return edge
+        return None
+
+    def update_edge(self, edge, **attrs):
+        if not self.contains_edge(edge):
+            raise ValueError(f'Edge {edge} does not exist')
+        edge = self._get_edge(edge)
+        edge.update(**attrs)
 
     def get_edge_attrs(self, edge):
         if not self.contains_edge(edge):

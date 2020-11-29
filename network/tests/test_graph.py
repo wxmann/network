@@ -29,6 +29,20 @@ class TestGraph(unittest.TestCase):
     def test__should_test_contains_leaf_node(self):
         self.assertTrue(self.graph.contains_node(3))
 
+    def test__should_remove_edge(self):
+        removed_edge = self.graph.remove_edge((2, 1))
+        self.assertListEqual(
+            [(edge.from_node, edge.to_node) for edge in self.graph.iter_edges()],
+            [(1, 2), (2, 3)]
+        )
+        nonexistent_edge = self.graph.remove_edge((1, 9))
+        self.assertIsNotNone(removed_edge)
+        self.assertIsNone(nonexistent_edge)
+
+    def test__should_update_edge(self):
+        self.graph.update_edge((2, 1), strength=0)
+        self.assertDictEqual(self.graph.get_edge_attrs((2, 1)), dict(strength=0))
+
     def test__contains_edge_should_test_nodes_in_graph(self):
         self.assertTrue(self.graph.contains_edge((2, 1)))
         self.assertFalse(self.graph.contains_edge((2, 2)))

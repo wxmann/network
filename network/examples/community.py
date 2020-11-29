@@ -9,6 +9,13 @@ from network.randoms import fixed_random
 
 def community_graph(n_communities, community_size, orphans,
                     n_strong_conns, n_weak_conns, strengths):
+    if not all([
+        'core' in strengths,
+        'strong' in strengths,
+        'weak' in strengths
+    ]):
+        raise ValueError('Strengths must be a dict with `core`, `strong`, and `weak` keys')
+
     g = Graph()
     core_edges, node_community_map = communities(n_communities, community_size)
 
