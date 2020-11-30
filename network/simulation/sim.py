@@ -37,13 +37,14 @@ class Simulation:
         self._tracked_index = 0
 
     def _exec_transmission(self, steps):
-        try:
-            while steps is None or self._tracked_index < steps:
+        while steps is None or self._tracked_index < steps:
+            try:
                 next_path_segment = next(self._runner)
                 self._saved_path.append(next_path_segment)
                 self._tracked_index += 1
-        except StopIteration:
-            self._path_completed = True
+            except StopIteration:
+                self._path_completed = True
+                break
 
     def path(self, index=None):
         if index is None or (not self._path_completed and index >= len(self._saved_path)):

@@ -48,7 +48,7 @@ class Graph:
         return sum(len(edges) for edges in self._nodes.values())
 
     def iter_edges(self):
-        for node, edges in self._nodes.items():
+        for edges in self._nodes.values():
             for edge in edges.values():
                 yield edge
 

@@ -205,22 +205,23 @@ class GraphAnimator:
         self.drawer = drawer
         self._plotter = None
 
-    def frame(self, n, simulation, marked_color='red', **draw_kw):
+    def frame(self, n, simulation, marked_color='red', arrows=True, **draw_kw):
         plotter = self.drawer._generate_plotter(simulation.originating_node)
 
         for segment in simulation.path(n):
             for edge in segment:
-                plotter.set_edge(edge, marked_color)
+                if arrows:
+                    plotter.set_edge(edge, marked_color)
                 plotter.set_node(edge.from_node, marked_color)
                 plotter.set_node(edge.to_node, marked_color)
         plotter.refresh()
 
         return self.drawer.draw(simulation.originating_node,
-                                plotter_inst=plotter, **draw_kw)
+                                plotter_inst=plotter, arrows=arrows, **draw_kw)
 
     def __call__(self, simulation, fig=None,
                  every=3, max_frames=None,
-                 marked_color='red', **draw_kw):
+                 marked_color='red', arrows=True, **draw_kw):
 
         def update(path):
             if not path:
@@ -228,7 +229,8 @@ class GraphAnimator:
             else:
                 for segment in path:
                     for edge in segment:
-                        self._plotter.set_edge(edge, marked_color)
+                        if arrows:
+                            self._plotter.set_edge(edge, marked_color)
                         self._plotter.set_node(edge.from_node, marked_color)
                         self._plotter.set_node(edge.to_node, marked_color)
             self._plotter.refresh()
@@ -240,7 +242,8 @@ class GraphAnimator:
                 yield chunk
 
         def init():
-            self._plotter = self.drawer.draw(simulation.originating_node, **draw_kw)
+            self._plotter = self.drawer.draw(simulation.originating_node,
+                                             arrows=arrows, **draw_kw)
             return self._plotter.artists
 
         return FuncAnimation(fig or plt.gcf(), update,

@@ -20,12 +20,12 @@ def virus_runner(graph, strengths):
         raise ValueError('Strengths must be a dict with `strong`, and `weak` keys')
 
     def reset_weak_edges():
-        num_weak_edges = 0
-        for prev_weak_edge in (edge for edge in graph.iter_edges() if edge.kind == 'weak'):
+        edges_to_remove = [edge for edge in graph.iter_edges() if edge.kind == 'weak']
+        for prev_weak_edge in edges_to_remove:
             graph.remove_edge(prev_weak_edge.nodes)
-            num_weak_edges += 1
 
-        for new_weak_edge in generate_edges(graph, num_weak_edges):
+        n_new_weak_edges = int(len(edges_to_remove) / 2)
+        for new_weak_edge in generate_edges(graph, n_new_weak_edges):
             graph.add_edge(new_weak_edge, kind='weak', strength=strengths['weak'])
 
     def update_strong_edges():
@@ -39,7 +39,10 @@ def virus_runner(graph, strengths):
     def runner(transmission):
         while True:
             update_strong_edges()
-            yield next(transmission)
+            try:
+                yield next(transmission)
+            except StopIteration:
+                return
             reset_weak_edges()
 
     return runner

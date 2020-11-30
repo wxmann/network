@@ -32,14 +32,14 @@ def community_graph(n_communities, community_size, orphans,
     for weak_edge in generate_edges(g, n_weak_conns):
         g.add_edge(weak_edge, kind='weak', strength=strengths['weak'])
 
-    return g
+    return g, node_community_map
 
 
 def generate_edges(graph, n):
     # assert graph is undirected
-    for edge in graph.iter_edges():
-        if not graph.contains_edge(reversed(edge.nodes)):
-            raise ValueError('Graph must be reversible/undirected')
+    # for edge in graph.iter_edges():
+    #     if not graph.contains_edge(reversed(edge.nodes)):
+    #         raise ValueError('Graph must be reversible/undirected')
 
     n_nodes = len(graph.nodes)
     n_existing_edges = graph.num_edges / 2
