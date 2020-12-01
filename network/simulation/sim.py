@@ -33,13 +33,23 @@ class Simulation:
             self._runner = runner(transmission)
 
         self._saved_path = []
+        self._history = []
         self._path_completed = False
         self._tracked_index = 0
+
+    @property
+    def history(self):
+        return tuple(self._history)
 
     def _exec_transmission(self, steps):
         while steps is None or self._tracked_index < steps:
             try:
                 next_path_segment = next(self._runner)
+                self._history.append({
+                    'steps': self._transmission.steps,
+                    'broadcasts': self._transmission.broadcasts,
+                    'tests': self._transmission.tests
+                })
                 self._saved_path.append(next_path_segment)
                 self._tracked_index += 1
             except StopIteration:

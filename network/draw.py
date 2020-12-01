@@ -221,7 +221,8 @@ class GraphAnimator:
 
     def __call__(self, simulation, fig=None,
                  every=3, max_frames=None,
-                 marked_color='red', arrows=True, **draw_kw):
+                 marked_color='red', arrows=True,
+                 repeat_delay=10, **draw_kw):
 
         def update(path):
             if not path:
@@ -247,7 +248,8 @@ class GraphAnimator:
             return self._plotter.artists
 
         return FuncAnimation(fig or plt.gcf(), update,
-                             frames=gen_func, init_func=init, blit=False)
+                             frames=gen_func, init_func=init,
+                             blit=False, repeat_delay=repeat_delay)
 
 
 def chunks(iterable, n):

@@ -1,6 +1,6 @@
 import math
 import random
-from itertools import combinations, permutations
+from itertools import combinations, permutations, product
 
 from network.draw import GraphDrawer
 from network.graph import Graph
@@ -99,7 +99,8 @@ def community_drawer(graph, node_community_map, **positions_kw):
 
 
 class CommunityNodePositions:
-    def __init__(self, node_community_map, dim=1000, sparseness=2, random_=None):
+    def __init__(self, node_community_map, dim=1000, sparseness=2,
+                 random_=None, rfactor=1.5):
         assert sparseness >= 1
         self.node_community_map = node_community_map
         self.n_comm = len(set(node_community_map.values()))
@@ -110,6 +111,7 @@ class CommunityNodePositions:
         self.r = dim / (2 * self.side_len)
         self.dim = dim
         self._random = random_ or fixed_random()
+        self.rfactor = rfactor
 
     def _ctr_coords_for(self, sq):
         x, y = sq
@@ -118,14 +120,15 @@ class CommunityNodePositions:
     def _random_coord_within(self, sq):
         x0, y0 = self._ctr_coords_for(sq)
         # dr = random.gauss(mu=0, sigma=self.r * 1.5)
-        dr = self.r * 1.5 * self._random.betavariate(1.33, 1.33)
+        dr = self.r * self.rfactor * self._random.betavariate(1.33, 1.33)
         dtheta = self._random.uniform(0, 2 * math.pi)
         dx = dr * math.cos(dtheta)
         dy = dr * math.sin(dtheta)
         return x0 + dx, y0 + dy
 
     def __call__(self, graph, start):
-        grid = list(permutations(range(self.side_len), 2))
+        self._random.seed(0)
+        grid = list(product(range(self.side_len), range(self.side_len)))
         selected_sq = list(self._random.sample(grid, self.n_comm))
         not_selected = [sq for sq in grid if sq not in selected_sq]
 
