@@ -167,9 +167,9 @@ class GraphPlotter:
     @staticmethod
     def _set_linewidth(edge, edgeline, linewidth):
         if linewidth is not None:
-            if edge.strength is not None and isinstance(linewidth, tuple):
+            if edge.attr('strength') is not None and isinstance(linewidth, tuple):
                 minwidth, maxwidth = linewidth
-                edgeline.linewidth = edge.strength * (maxwidth - minwidth) + minwidth
+                edgeline.linewidth = edge.attr('strength') * (maxwidth - minwidth) + minwidth
             else:
                 edgeline.linewidth = linewidth
 

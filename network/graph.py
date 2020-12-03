@@ -1,30 +1,22 @@
-from dataclasses import dataclass, field
+import attr
 from typing import Any
 
 
-@dataclass(frozen=True)
+@attr.s(frozen=True, slots=True)
 class _Edge:
-    # __slots__ = ['from_node', 'to_node', 'attrs', 'nodes']
-    from_node: Any
-    to_node: Any
-    attrs: dict = field(default_factory=dict, hash=False, compare=False, repr=False)
-    nodes: tuple = field(init=False, hash=False, compare=False, repr=False)
-
-    def __post_init__(self):
-        object.__setattr__(self, 'nodes', (self.from_node, self.to_node))
+    from_node: Any = attr.ib()
+    to_node: Any = attr.ib()
+    attrs: dict = attr.ib(factory=dict, eq=False, repr=False, order=False)
+    nodes: tuple = attr.ib(
+        init=False, eq=False, repr=False, order=False,
+        default=attr.Factory(
+            lambda self: (self.from_node, self.to_node),
+            takes_self=True
+        )
+    )
 
     def attr(self, item):
         return self.attrs.get(item, None)
-
-    # @property
-    # def nodes(self):
-    #     return self.from_node, self.to_node
-
-    def __getattr__(self, item):
-        try:
-            return self.attrs[item]
-        except KeyError:
-            raise AttributeError
 
 
 class Graph:
