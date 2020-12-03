@@ -12,9 +12,9 @@ class _Edge:
     def nodes(self):
         return self.from_node, self.to_node
 
-    def get(self, item):
-        return self._attrs.get(item, None)
-
+    # def get(self, item):
+    #     return self._attrs.get(item, None)
+    #
     def update(self, **kwargs):
         self._attrs.update(kwargs)
 
@@ -34,6 +34,10 @@ class _Edge:
 class Graph:
     _UNDEFINED_NODE = 'EMPTY'
 
+    @classmethod
+    def of_size(cls, n_nodes):
+        return cls(vertices=range(n_nodes))
+
     def __init__(self, vertices=None):
         if vertices is None:
             vertices = []
@@ -48,19 +52,23 @@ class Graph:
         return sum(len(edges) for edges in self._nodes.values())
 
     def iter_edges(self):
-        for edges in self._nodes.values():
-            for edge in edges.values():
-                yield edge
+        for from_node in self._nodes:
+            for to_node in self._nodes[from_node]:
+                yield self._get_edge((from_node, to_node))
 
     def contains_node(self, node):
         return node in self._nodes
 
     def _get_edge(self, edge):
+        if not self.contains_edge(edge):
+            raise ValueError(f'Edge {edge} does not exist')
         from_node, to_node = edge
-        return self._nodes.get(from_node, {}).get(to_node, Graph._UNDEFINED_NODE)
+        node_attrs = self._nodes[from_node][to_node]
+        return _Edge(from_node, to_node, **node_attrs)
 
     def contains_edge(self, edge):
-        return self._get_edge(edge) is not Graph._UNDEFINED_NODE
+        from_node, to_node = edge
+        return from_node in self._nodes and to_node in self._nodes[from_node]
 
     def add_node(self, node):
         if self.contains_node(node):
@@ -75,8 +83,7 @@ class Graph:
         if not self.contains_node(from_node):
             self._nodes[from_node] = {}
 
-        new_edge = _Edge(from_node, to_node, **attrs)
-        self._nodes[from_node][to_node] = new_edge
+        self._nodes[from_node][to_node] = attrs
 
         if not self.contains_node(to_node):
             self._nodes[to_node] = {}
@@ -92,8 +99,8 @@ class Graph:
     def update_edge(self, edge, **attrs):
         if not self.contains_edge(edge):
             raise ValueError(f'Edge {edge} does not exist')
-        edge = self._get_edge(edge)
-        edge.update(**attrs)
+        from_node, to_node = edge
+        self._nodes[from_node][to_node].update(attrs)
 
     def get_edge_attrs(self, edge):
         if not self.contains_edge(edge):
@@ -132,3 +139,4 @@ class Graph:
             raise ValueError(f'Node {from_node} does not exist in this graph')
         for child in self._children_for(from_node):
             yield self._get_edge((from_node, child))
+

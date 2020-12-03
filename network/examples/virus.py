@@ -32,9 +32,9 @@ def virus_runner(graph, strengths):
         for strong_edge in (edge for edge in graph.iter_edges() if edge.kind == 'strong'):
             # 50-50 chance of seeing a strong edge
             if test(0.5):
-                strong_edge.update(strength=0)
+                graph.update_edge(strong_edge.nodes, strength=0)
             else:
-                strong_edge.update(strength=strengths['strong'])
+                graph.update_edge(strong_edge.nodes, strength=strengths['strong'])
 
     def runner(transmission):
         while True:

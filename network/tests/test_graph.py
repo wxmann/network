@@ -36,7 +36,7 @@ class TestGraph(unittest.TestCase):
             [(1, 2), (2, 3)]
         )
         nonexistent_edge = self.graph.remove_edge((1, 9))
-        self.assertEqual(removed_edge.nodes, (2, 1))
+        self.assertIsInstance(removed_edge, dict)
         self.assertIsNone(nonexistent_edge)
         self.assertEqual(self.graph.num_edges, 2)
 

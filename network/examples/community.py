@@ -8,7 +8,8 @@ from network.randoms import fixed_random
 
 
 def community_graph(n_communities, community_size, orphans,
-                    n_strong_conns, n_weak_conns, strengths):
+                    n_strong_conns, n_weak_conns, strengths,
+                    graph_fun=None):
     if not all([
         'core' in strengths,
         'strong' in strengths,
@@ -16,15 +17,20 @@ def community_graph(n_communities, community_size, orphans,
     ]):
         raise ValueError('Strengths must be a dict with `core`, `strong`, and `weak` keys')
 
-    g = Graph()
+    total_ppl = n_communities * community_size + orphans
+
+    if not graph_fun:
+        graph_fun = Graph.of_size
+
+    g = graph_fun(total_ppl)
     core_edges, node_community_map = communities(n_communities, community_size)
 
     for edge in core_edges:
         g.add_edge(edge, kind='core', strength=strengths['core'])
 
-    for orphan_elem in range(orphans):
-        orphan_node = orphan_elem + max(node_community_map) + 1
-        g.add_node(orphan_node)
+    # for orphan_elem in range(orphans):
+    #     orphan_node = orphan_elem + max(node_community_map) + 1
+    #     g.add_node(orphan_node)
 
     for strong_edge in generate_edges(g, n_strong_conns):
         g.add_edge(strong_edge, kind='strong', strength=strengths['strong'])
