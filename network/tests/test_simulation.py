@@ -53,7 +53,10 @@ class TestSimulation(unittest.TestCase):
             graph = transmission.graph
             addend = 2
             while True:
-                yield next(transmission)
+                try:
+                    yield next(transmission)
+                except StopIteration:
+                    return
                 if addend + 4 <= 10:
                     graph.add_edge((4, addend + 4))
                     addend += 1

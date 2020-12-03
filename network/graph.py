@@ -1,39 +1,33 @@
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass(frozen=True)
 class _Edge:
-    def __init__(self, from_node, to_node, **kwargs):
-        self.from_node = from_node
-        self.to_node = to_node
-        self._attrs = kwargs
+    # __slots__ = ['from_node', 'to_node', 'attrs', 'nodes']
+    from_node: Any
+    to_node: Any
+    attrs: dict = field(default_factory=dict, hash=False, compare=False, repr=False)
+    nodes: tuple = field(init=False, hash=False, compare=False, repr=False)
 
-    @property
-    def attrs(self):
-        return dict(self._attrs)
+    def __post_init__(self):
+        object.__setattr__(self, 'nodes', (self.from_node, self.to_node))
 
-    @property
-    def nodes(self):
-        return self.from_node, self.to_node
+    def attr(self, item):
+        return self.attrs.get(item, None)
 
-    # def get(self, item):
-    #     return self._attrs.get(item, None)
-    #
-    def update(self, **kwargs):
-        self._attrs.update(kwargs)
+    # @property
+    # def nodes(self):
+    #     return self.from_node, self.to_node
 
     def __getattr__(self, item):
         try:
-            return self._attrs[item]
+            return self.attrs[item]
         except KeyError:
             raise AttributeError
 
-    def __hash__(self):
-        return hash((self.from_node, self.to_node))
-
-    def __str__(self):
-        return f'<Edge from: {self.from_node} to {self.to_node}>'
-
 
 class Graph:
-    _UNDEFINED_NODE = 'EMPTY'
-
     @classmethod
     def of_size(cls, n_nodes):
         return cls(vertices=range(n_nodes))
@@ -60,11 +54,9 @@ class Graph:
         return node in self._nodes
 
     def _get_edge(self, edge):
-        if not self.contains_edge(edge):
-            raise ValueError(f'Edge {edge} does not exist')
         from_node, to_node = edge
-        node_attrs = self._nodes[from_node][to_node]
-        return _Edge(from_node, to_node, **node_attrs)
+        attrs = self._nodes[from_node][to_node]
+        return _Edge(from_node, to_node, attrs)
 
     def contains_edge(self, edge):
         from_node, to_node = edge
@@ -105,7 +97,7 @@ class Graph:
     def get_edge_attrs(self, edge):
         if not self.contains_edge(edge):
             raise ValueError(f'Edge {edge} does not exist')
-        return self._get_edge(edge).attrs
+        return dict(self._get_edge(edge).attrs)
 
     def _children_for(self, node_index, predicate=None):
         return (node for node in self._nodes[node_index]
@@ -139,4 +131,3 @@ class Graph:
             raise ValueError(f'Node {from_node} does not exist in this graph')
         for child in self._children_for(from_node):
             yield self._get_edge((from_node, child))
-
