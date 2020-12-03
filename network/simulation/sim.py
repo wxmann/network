@@ -1,29 +1,6 @@
 import random
 
 
-# def run_simulation(graph, start, test_transmit=None,
-#                    metadata=None, random_=None):
-#     if random_ is None:
-#         random_ = random.Random()
-#     transmission = graph.transmit(start, test_transmit=test_transmit,
-#                                   randomized=random_)
-#     return Transmission(tuple(transmission), metadata)
-
-
-# def random_graph(n_nodes, param_generator):
-#     graph = Graph(range(n_nodes))
-#
-#     for node in graph.nodes:
-#         edges_to_build = param_generator.follow_count(n_nodes)
-#         pool = set(graph.nodes)
-#         pool.remove(node)
-#         for node_to_follow in random.sample(pool, edges_to_build):
-#             graph.add_edge(edge=(node_to_follow, node),
-#                            strength=param_generator.edge_strength())
-#
-#     return graph
-
-
 class Simulation:
     def __init__(self, transmission, runner=None):
         self._transmission = transmission
@@ -39,7 +16,7 @@ class Simulation:
 
     @property
     def history(self):
-        return tuple(self._history)
+        return _History(self)
 
     def _exec_transmission(self, steps):
         while steps is None or self._tracked_index < steps:
@@ -69,6 +46,20 @@ class Simulation:
     @property
     def transmission(self):
         return self._transmission
+
+
+class _History:
+    def __init__(self, sim):
+        self.sim = sim
+
+    def _get_path_index(self, step):
+        return -1 if step >= len(self.sim._saved_path) else step
+
+    def __getitem__(self, step):
+        if step < 0:
+            return self.sim._history[step]
+        self.sim.path(step + 1)
+        return self.sim._history[self._get_path_index(step)]
 
 
 def test(p):

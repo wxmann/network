@@ -24,7 +24,15 @@ def uniform(a, b):
 
 
 def fixed(val):
-    return _RV(lambda: val)
+    return _RV(lambda x: x, val=val)
+
+
+def choice(*items):
+    return _RV(random.choice, choices=items)
+
+
+def randrange(a, b):
+    return _RV(random.randint, a=a, b=b)
 
 
 class _RV:
