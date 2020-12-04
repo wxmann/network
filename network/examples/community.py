@@ -8,14 +8,20 @@ from network.randoms import fixed_random
 
 
 def community_graph(n_communities, community_size, orphans,
-                    n_strong_conns, n_weak_conns, strengths,
+                    n_strong_conns, n_weak_conns, *,
+                    core_kw=None, strong_kw=None, weak_kw=None,
                     graph_fun=None):
-    if not all([
-        'core' in strengths,
-        'strong' in strengths,
-        'weak' in strengths
-    ]):
-        raise ValueError('Strengths must be a dict with `core`, `strong`, and `weak` keys')
+
+    def _get_kw_func(kw):
+        if not kw:
+            return dict
+        if not callable(kw):
+            return lambda: kw
+        return kw
+
+    core_kw = _get_kw_func(core_kw)
+    strong_kw = _get_kw_func(strong_kw)
+    weak_kw = _get_kw_func(weak_kw)
 
     total_ppl = n_communities * community_size + orphans
 
@@ -26,17 +32,13 @@ def community_graph(n_communities, community_size, orphans,
     core_edges, node_community_map = communities(n_communities, community_size)
 
     for edge in core_edges:
-        g.add_edge(edge, kind='core', strength=strengths['core'])
-
-    # for orphan_elem in range(orphans):
-    #     orphan_node = orphan_elem + max(node_community_map) + 1
-    #     g.add_node(orphan_node)
+        g.add_edge(edge, kind='core', **core_kw())
 
     for strong_edge in generate_edges(g, n_strong_conns):
-        g.add_edge(strong_edge, kind='strong', strength=strengths['strong'])
+        g.add_edge(strong_edge, kind='strong', **strong_kw())
 
     for weak_edge in generate_edges(g, n_weak_conns):
-        g.add_edge(weak_edge, kind='weak', strength=strengths['weak'])
+        g.add_edge(weak_edge, kind='weak', **weak_kw())
 
     return g, node_community_map
 

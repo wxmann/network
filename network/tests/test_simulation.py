@@ -20,11 +20,8 @@ class TestSimulation(unittest.TestCase):
         def runner(transmission):
             graph = transmission.graph
             addend = 2
-            while True:
-                try:
-                    yield next(transmission)
-                except StopIteration:
-                    return
+            for step in transmission:
+                yield step
                 if addend + 4 <= 10:
                     graph.add_edge((4, addend + 4))
                     addend += 1
