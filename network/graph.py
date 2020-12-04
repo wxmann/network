@@ -24,6 +24,13 @@ class Graph:
     def of_size(cls, n_nodes):
         return cls(vertices=range(n_nodes))
 
+    @classmethod
+    def duplicate(cls, graph):
+        inst = cls(graph.nodes)
+        for edge in graph.iter_edges():
+            inst.add_edge(edge.nodes, **edge.attrs)
+        return inst
+
     def __init__(self, vertices=None):
         if vertices is None:
             vertices = []
