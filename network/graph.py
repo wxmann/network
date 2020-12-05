@@ -55,7 +55,7 @@ class Graph:
     def _get_edge(self, edge):
         from_node, to_node = edge
         attrs = self._nodes[from_node][to_node]
-        return _Edge(from_node, to_node, attrs)
+        return _Edge(from_node, to_node, dict(attrs))
 
     def contains_edge(self, edge):
         from_node, to_node = edge

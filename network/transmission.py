@@ -32,7 +32,8 @@ class GraphTransmission:
 
     def _do_broadcast(self, node):
         for edge in self.graph.outbound_edges(node):
-            self._selector.add(edge)
+            if edge.to_node not in self._nodes_broadcasted:
+                self._selector.add(edge)
 
     def _track_broadcasts(self, nodes):
         for node in nodes:
@@ -145,7 +146,7 @@ class DelayedSelector(Selector):
     def add(self, item):
         lag_time = self.lag() if callable(self.lag) else self.lag
         item_with_lag_counter = (self._time_counter + lag_time, item)
-        super(DelayedSelector, self).add(item_with_lag_counter)
+        super().add(item_with_lag_counter)
 
     def _pick(self):
         items_to_pick = [(t, item) for (t, item) in self._items

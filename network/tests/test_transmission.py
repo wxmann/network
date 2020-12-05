@@ -27,37 +27,33 @@ class TestGraphTransmission(unittest.TestCase):
         self.graph.add_edge((3, 2))
         self.graph.add_edge((2, 1))
 
+    def assertPathEqual(self, actual, expected, log_on_err=True):
+        self.assertEqual(len(expected), len(actual))
+        for expected_step, actual_step in zip(expected, actual):
+            try:
+                self.assertCountEqual(expected_step, actual_step)
+            except AssertionError as e:
+                if log_on_err:
+                    print(f'Actual: {actual} | Expected: {expected}')
+                raise e
+
     def test__should_transmit_fifo_through_graph_starting_from_top(self):
         path = [TestGraphTransmission._nodes_of(step)
                 for step in GraphTransmission(self.graph, 1, FIFOSelector())]
 
-        self.assertListEqual(path, [[(1, 2)], [(1, 3)], [(1, 4)], [], [], [(3, 5)], [], []])
-
-    def test__should_transmit_random_through_graph_starting_from_top(self):
-        with fix_random():
-            path = [TestGraphTransmission._nodes_of(step)
-                    for step in GraphTransmission(self.graph, 1, RandomSelector())]
-
-            self.assertListEqual(path, [[(1, 3)], [(3, 5)], [(1, 4)], [(1, 2)], [], [], [], []])
+        self.assertPathEqual(path, [[(1, 2)], [(1, 3)], [(1, 4)], [], [(3, 5)]])
 
     def test__should_transmit_fifo_through_graph_starting_from_middle(self):
         path = [TestGraphTransmission._nodes_of(step)
                 for step in GraphTransmission(self.graph, 3, FIFOSelector())]
 
-        self.assertListEqual(path, [[(3, 5)], [(3, 2)], [], [(2, 1)], [], [], [(1, 4)], []])
-
-    def test__should_transmit_through_graph_starting_from_middle_randomized(self):
-        with fix_random():
-            path = [TestGraphTransmission._nodes_of(step)
-                    for step in GraphTransmission(self.graph, 3, RandomSelector())]
-
-            self.assertListEqual(path, [[(3, 5)], [(3, 2)], [], [(2, 1)], [], [(1, 4)], [], []])
+        self.assertListEqual(path, [[(3, 5)], [(3, 2)], [(2, 1)], [(1, 4)]])
 
     def test__should_transmit_lagged_starting_from_top(self):
         path = [TestGraphTransmission._nodes_of(step)
                 for step in GraphTransmission(self.graph, 1, DelayedSelector(lag=2))]
 
-        self.assertListEqual(path, [[], [], [(1, 2), (1, 4), (1, 3)], [], [], [(3, 5)]])
+        self.assertPathEqual(path, [[], [], [(1, 2), (1, 4), (1, 3)], [], [], [(3, 5)]])
 
     def test__should_transmit_fifo_with_persistent_broadcast(self):
         with fix_random():
@@ -67,10 +63,9 @@ class TestGraphTransmission(unittest.TestCase):
                     persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.5)
                 )]
 
-        self.assertListEqual(
+        self.assertPathEqual(
             path,
-            [[], [(1, 3)], [(1, 4)], [], [], [], [(3, 5)], [(3, 2)], [], [], [], [], [], [], [], [], [], [], [], [], [],
-             [], [], []]
+            [[], [(1, 3)], [(1, 4)], [], [], [], [(3, 5)], [(3, 2)], [], [], [], [], [], [], []]
         )
 
     def test__should_transmit_persistent_broadcast_even_after_emptied(self):
