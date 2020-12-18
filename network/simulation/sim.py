@@ -16,28 +16,13 @@ class Simulation:
             self._runner = runner(transmission)
 
         self._saved_path = []
-        self._history = []
         self._path_completed = False
         self._tracked_index = 0
-
-    @property
-    def history(self):
-        # return _History(self)
-        return self._transmission.history
-
-    @property
-    def alt_history(self):
-        return _History(self)
 
     def _exec_transmission(self, steps):
         while steps is None or self._tracked_index < steps:
             try:
                 next_path_segment = next(self._runner)
-                self._history.append({
-                    'steps': self._transmission.steps,
-                    'broadcasts': self._transmission.broadcasts,
-                    'tests': self._transmission.tests
-                })
                 self._saved_path.append(next_path_segment)
                 self._tracked_index += 1
             except StopIteration:
@@ -58,19 +43,9 @@ class Simulation:
     def transmission(self):
         return self._transmission
 
-
-class _History:
-    def __init__(self, sim):
-        self.sim = sim
-
-    def _get_path_index(self, step):
-        return -1 if step >= len(self.sim._saved_path) else step
-
-    def __getitem__(self, step):
-        if step < 0:
-            return self.sim._history[step]
-        self.sim.path(step + 1)
-        return self.sim._history[self._get_path_index(step)]
+    @property
+    def history(self):
+        return self._transmission.history
 
 
 def test(p):
