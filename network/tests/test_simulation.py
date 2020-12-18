@@ -69,54 +69,30 @@ class TestSimulation(unittest.TestCase):
                 [TestSimulation._nodes_of(step) for step in sim.path(3)],
                 [[(1, 2)], [(1, 3)], [(1, 4)]]
             )
-            history_two = {
+            history_index_three = {
                 'steps': 3,
                 'broadcasts': 4,
-                'tests': 3
+                'tests': 4
             }
-            self.assertDictEqual(sim.history[2], history_two)
-            self.assertDictEqual(sim.history[-1], sim.history[2])
+            self.assertDictEqual(sim.history[3].to_dict(), history_index_three)
+            self.assertDictEqual(sim.history[-1].to_dict(), sim.history[3].to_dict())
 
             self.assertListEqual(
                 [TestSimulation._nodes_of(step) for step in sim.path()],
                 [[(1, 2)], [(1, 3)], [(1, 4)], [(1, 5)], [(4, 6)], [(4, 7)]]
             )
-            self.assertDictEqual(sim.history[2], history_two)
 
             last_history = {
                 'steps': 6,
                 'broadcasts': 7,
-                'tests': 6
+                'tests': 7
             }
-            self.assertDictEqual(sim.history[15], last_history)
-            self.assertDictEqual(sim.history[-1], last_history)
+            self.assertDictEqual(sim.history[-1].to_dict(), last_history)
 
             self.assertListEqual(
                 [TestSimulation._nodes_of(step) for step in sim.path(2)],
                 [[(1, 2)], [(1, 3)]]
             )
-
-    def test_run_simulation_runner_adds_nodes_history(self):
-        sim = Simulation(self.transmission, self.runner)
-        with fix_random():
-            history_two = {
-                'steps': 3,
-                'broadcasts': 4,
-                'tests': 3
-            }
-            self.assertDictEqual(sim.history[2], history_two)
-            self.assertDictEqual(sim.history[-1], sim.history[2])
-
-            list(sim.path())
-            self.assertDictEqual(sim.history[2], history_two)
-
-            last_history = {
-                'steps': 6,
-                'broadcasts': 7,
-                'tests': 6
-            }
-            self.assertDictEqual(sim.history[15], last_history)
-            self.assertDictEqual(sim.history[-1], last_history)
 
 
 if __name__ == '__main__':

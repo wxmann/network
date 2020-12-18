@@ -1,4 +1,10 @@
+import contextlib
 import random
+from itertools import islice
+
+from pathos.multiprocessing import ProcessingPool
+
+from network.randoms import fix_random
 
 
 class Simulation:
@@ -16,6 +22,11 @@ class Simulation:
 
     @property
     def history(self):
+        # return _History(self)
+        return self._transmission.history
+
+    @property
+    def alt_history(self):
         return _History(self)
 
     def _exec_transmission(self, steps):
@@ -37,7 +48,7 @@ class Simulation:
         if index is None or (not self._path_completed and index >= len(self._saved_path)):
             self._exec_transmission(index)
         max_index = len(self._saved_path) if index is None else index
-        return (seg for (i, seg) in enumerate(self._saved_path) if i < max_index)
+        return islice(self._saved_path, max_index)
 
     @property
     def originating_node(self):
@@ -69,3 +80,40 @@ def test(p):
         return random.random() < p
     else:
         raise ValueError('p must be between 0 and 1')
+
+
+def run_simulations(*sims, to=None, workers=None, reproducible=True):
+    def run_single_sim(sim):
+        ctx = fix_random if reproducible else contextlib.nullcontext
+        with ctx():
+            sim.path(to)
+            return sim
+
+    if len(sims) == 1:
+        return run_single_sim(sims[0])
+
+    if workers is None:
+        workers = min(len(sims), 4)
+    pool = ProcessingPool(workers)
+    return pool.map(run_single_sim, sims)
+
+
+def create_runner(before=None, after=None):
+    return lambda transmission: _BeforeAndAfterRunner(transmission, before, after)
+
+
+class _BeforeAndAfterRunner:
+    def __init__(self, transmission, before, after):
+        self.before = before
+        self.after = after
+        self.transmission = transmission
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.before:
+            self.before(self.transmission)
+        next(self.transmission)
+        if self.after:
+            self.after(self.transmission)

@@ -1,3 +1,6 @@
+import attr
+
+
 class GraphTransmission:
     def __init__(self, graph, from_node, selector, test_transmit=None,
                  persist_broadcast=False):
@@ -14,6 +17,9 @@ class GraphTransmission:
 
         self._do_broadcast(self.originating_node)
         self._track_broadcasts([self.originating_node])
+        self._history = [self.state]
+
+        self.props = {}
 
     @property
     def steps(self):
@@ -26,6 +32,18 @@ class GraphTransmission:
     @property
     def tests(self):
         return self._tests
+
+    @property
+    def state(self):
+        return TransmissionState(
+            steps=self.steps,
+            broadcasts=self.broadcasts,
+            tests=self.broadcasts
+        )
+
+    @property
+    def history(self):
+        return tuple(self._history)
 
     def __iter__(self):
         return self
@@ -75,8 +93,23 @@ class GraphTransmission:
             raise StopIteration
 
         self._track_broadcasts(broadcasts)
+        self._history.append(self.state)
 
         return tuple(edges)
+
+
+@attr.s(frozen=True, slots=True)
+class TransmissionState:
+    steps: int = attr.ib()
+    broadcasts: int = attr.ib()
+    tests: int = attr.ib()
+
+    def to_dict(self):
+        return {
+            'steps': self.steps,
+            'broadcasts': self.broadcasts,
+            'tests': self.tests,
+        }
 
 
 class Selector:
