@@ -1,6 +1,6 @@
 import math
 import random
-from itertools import combinations, permutations, product
+from itertools import combinations, product
 
 from network.draw import GraphDrawer
 from network.graph import Graph
@@ -28,7 +28,7 @@ def community_graph(n_communities, community_size, orphans,
     if not graph_fun:
         graph_fun = Graph.of_size
 
-    g = graph_fun(total_ppl)
+    g = graph_fun(total_ppl, directed=False)
     core_edges, node_community_map = communities(n_communities, community_size)
 
     for edge in core_edges:
@@ -44,13 +44,11 @@ def community_graph(n_communities, community_size, orphans,
 
 
 def generate_edges(graph, n):
-    # assert graph is undirected
-    # for edge in graph.iter_edges():
-    #     if not graph.contains_edge(reversed(edge.nodes)):
-    #         raise ValueError('Graph must be reversible/undirected')
+    if graph.directed:
+        raise ValueError('Graph must be undirected')
 
     n_nodes = len(graph.nodes)
-    n_existing_edges = graph.num_edges / 2
+    n_existing_edges = graph.num_edges
     n_combos_exist = int(n_nodes * (n_nodes - 1) / 2 - n_existing_edges)
 
     if n > n_combos_exist:
@@ -59,10 +57,9 @@ def generate_edges(graph, n):
     chosen_indices = set(random.sample(range(n_combos_exist), n))
     pool = (c for c in combinations(graph.nodes, 2) if not graph.contains_edge(c))
 
-    for index, (n1, n2) in enumerate(pool):
+    for index, nodes in enumerate(pool):
         if index in chosen_indices:
-            yield n1, n2
-            yield n2, n1
+            yield nodes
 
 
 def communities(n_communities, community_size):
@@ -77,7 +74,7 @@ def communities(n_communities, community_size):
 
     def yielding_community_edges():
         for comm_nodes in node_community_map.invert().values():
-            for edge in permutations(comm_nodes, 2):
+            for edge in combinations(comm_nodes, 2):
                 yield edge
 
     return yielding_community_edges(), node_community_map

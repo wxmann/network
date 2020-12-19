@@ -21,50 +21,68 @@ class _Edge:
 
 class Graph:
     @classmethod
-    def of_size(cls, n_nodes):
-        return cls(vertices=range(n_nodes))
+    def of_size(cls, n_nodes, directed):
+        return cls(vertices=range(n_nodes), directed=directed)
 
     @classmethod
     def duplicate(cls, graph):
-        inst = cls(graph.nodes)
+        inst = cls(graph.nodes, graph.directed)
         for edge in graph.iter_edges():
-            inst.add_edge(edge.nodes, **edge.attrs)
+            if not inst.contains_edge(edge):
+                inst.add_edge(edge.nodes, **edge.attrs)
         return inst
 
-    def __init__(self, vertices=None):
+    def __init__(self, vertices=None, directed=True):
         if vertices is None:
             vertices = []
-        self._nodes = {vertex: {} for vertex in vertices}
+        self._A = {vertex: {} for vertex in vertices}
+        self._directed = directed
 
     @property
     def nodes(self):
-        return self._nodes.keys()
+        return self._A.keys()
 
     @property
     def num_edges(self):
-        return sum(len(edges) for edges in self._nodes.values())
+        num = sum(len(edges) for edges in self._A.values())
+        return num if self._directed else num / 2
+
+    @property
+    def directed(self):
+        return self._directed
 
     def iter_edges(self):
-        for from_node in self._nodes:
-            for to_node in self._nodes[from_node]:
-                yield self._get_edge((from_node, to_node))
+        traversed_edges = set()
+        for from_node in self._A:
+            for to_node in self._A[from_node]:
+                if self._directed:
+                    yield self._get_edge((from_node, to_node))
+                elif (to_node, from_node) not in traversed_edges:
+                    traversed_edges.add((from_node, to_node))
+                    yield self._get_edge((from_node, to_node))
 
     def contains_node(self, node):
-        return node in self._nodes
+        return node in self._A
 
     def _get_edge(self, edge):
-        from_node, to_node = edge
-        attrs = self._nodes[from_node][to_node]
+        from_node, to_node = Graph._nodes_of(edge)
+        attrs = self._A[from_node][to_node]
         return _Edge(from_node, to_node, dict(attrs))
 
     def contains_edge(self, edge):
-        from_node, to_node = edge
-        return from_node in self._nodes and to_node in self._nodes[from_node]
+        from_node, to_node = Graph._nodes_of(edge)
+        return from_node in self._A and to_node in self._A[from_node]
+
+    @staticmethod
+    def _nodes_of(edge):
+        if isinstance(edge, _Edge):
+            return edge.nodes
+        return edge
 
     def add_node(self, node):
         if self.contains_node(node):
             raise ValueError(f'Graph already contains node {node}')
-        self._nodes[node] = {}
+        self._A[node] = {}
 
     def add_edge(self, edge, **attrs):
         if self.contains_edge(edge):
@@ -72,26 +90,35 @@ class Graph:
         from_node, to_node = edge
 
         if not self.contains_node(from_node):
-            self._nodes[from_node] = {}
-
-        self._nodes[from_node][to_node] = attrs
-
+            self._A[from_node] = {}
         if not self.contains_node(to_node):
-            self._nodes[to_node] = {}
+            self._A[to_node] = {}
+
+        self._A[from_node][to_node] = attrs
+        if not self._directed:
+            self._A[to_node][from_node] = attrs
 
     def remove_edge(self, edge):
         if self.contains_edge(edge):
-            from_node, to_node = edge
-            edge = self._nodes[from_node][to_node]
-            del self._nodes[from_node][to_node]
-            return edge
+            from_node, to_node = Graph._nodes_of(edge)
+            edge = self._A[from_node][to_node]
+            del self._A[from_node][to_node]
+
+            if not self._directed:
+                edge2 = self._A[to_node][from_node]
+                del self._A[to_node][from_node]
+                return edge, edge2
+            else:
+                return edge
         return None
 
     def update_edge(self, edge, **attrs):
         if not self.contains_edge(edge):
             raise ValueError(f'Edge {edge} does not exist')
-        from_node, to_node = edge
-        self._nodes[from_node][to_node].update(attrs)
+        from_node, to_node = Graph._nodes_of(edge)
+        self._A[from_node][to_node].update(attrs)
+        if not self._directed:
+            self._A[to_node][from_node].update(attrs)
 
     def get_edge_attrs(self, edge):
         if not self.contains_edge(edge):
@@ -99,7 +126,7 @@ class Graph:
         return dict(self._get_edge(edge).attrs)
 
     def _children_for(self, node_index, predicate=None):
-        return (node for node in self._nodes[node_index]
+        return (node for node in self._A[node_index]
                 if predicate is None or predicate(node))
 
     def children(self, node_index, deg=1, predicate=None, exclude_dups=True):
