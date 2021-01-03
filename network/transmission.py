@@ -14,6 +14,7 @@ class GraphTransmission:
         self._step_index = 0
         self._tests = 0
         self._persist_broadcast = persist_broadcast
+        self._current_step_queued = set()
 
         self._do_broadcast(self.originating_node)
         self._track_broadcasts([self.originating_node])
@@ -50,8 +51,12 @@ class GraphTransmission:
 
     def _do_broadcast(self, node):
         for edge in self.graph.outbound_edges(node):
-            if edge.to_node not in self._nodes_broadcasted:
-                self._selector.add(edge)
+            node = edge.to_node
+            if node not in self._nodes_broadcasted and node not in self._current_step_queued:
+                self._tests += 1
+                if self.test_transmit is None or self.test_transmit(self, edge):
+                    self._selector.add(edge)
+                    self._current_step_queued.add(node)
 
     def _track_broadcasts(self, nodes):
         for node in nodes:
@@ -68,18 +73,17 @@ class GraphTransmission:
 
     def __next__(self):
         self._step_index += 1
-        edges = []
         broadcasts = []
+        edges = []
         selector_emptied = False
 
         try:
             for edge in next(self._selector):
-                if edge.to_node not in self._nodes_broadcasted:
-                    self._tests += 1
-                    if self.test_transmit is None or self.test_transmit(self, edge):
-                        self._do_broadcast(edge.to_node)
-                        edges.append(edge)
-                        broadcasts.append(edge.to_node)
+                node = edge.to_node
+                if node not in self._nodes_broadcasted:
+                    self._do_broadcast(node)
+                    broadcasts.append(node)
+                    edges.append(edge)
         except StopIteration:
             selector_emptied = True
 
@@ -94,6 +98,7 @@ class GraphTransmission:
 
         self._track_broadcasts(broadcasts)
         self._history.append(self.state)
+        self._current_step_queued.clear()
 
         return tuple(edges)
 

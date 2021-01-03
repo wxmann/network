@@ -28,7 +28,6 @@ class TestGraphTransmission(unittest.TestCase):
         self.graph.add_edge((2, 1))
 
     def assertPathEqual(self, actual, expected, log_on_err=True):
-        self.assertEqual(len(expected), len(actual))
         for expected_step, actual_step in zip(expected, actual):
             try:
                 self.assertCountEqual(expected_step, actual_step)
@@ -36,12 +35,13 @@ class TestGraphTransmission(unittest.TestCase):
                 if log_on_err:
                     print(f'Actual: {actual} | Expected: {expected}')
                 raise e
+        self.assertEqual(len(expected), len(actual))
 
     def test__should_transmit_fifo_through_graph_starting_from_top(self):
         path = [TestGraphTransmission._nodes_of(step)
                 for step in GraphTransmission(self.graph, 1, FIFOSelector())]
 
-        self.assertPathEqual(path, [[(1, 2)], [(1, 3)], [(1, 4)], [], [(3, 5)]])
+        self.assertPathEqual(path, [[(1, 2)], [(1, 3)], [(1, 4)], [(3, 5)]])
 
     def test__should_transmit_fifo_through_graph_starting_from_middle(self):
         path = [TestGraphTransmission._nodes_of(step)
@@ -60,12 +60,12 @@ class TestGraphTransmission(unittest.TestCase):
             path = [TestGraphTransmission._nodes_of(step)
                     for step in GraphTransmission(
                     self.graph, 1, FIFOSelector(),
-                    persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.5)
+                    persist_broadcast=2, test_transmit=lambda trans, edge: numtest(0.75)
                 )]
 
         self.assertPathEqual(
             path,
-            [[], [(1, 3)], [(1, 4)], [], [], [], [(3, 5)], [(3, 2)], [], [], [], [], [], [], []]
+            [[(1, 3)], [(1, 4)], [(3, 2)], [], [], [(3, 5)], [], []]
         )
 
     def test__should_transmit_persistent_broadcast_even_after_emptied(self):
