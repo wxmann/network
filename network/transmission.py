@@ -31,6 +31,10 @@ class GraphTransmission:
         return len(self._nodes_broadcasted)
 
     @property
+    def broadcast_tracker(self):
+        return dict(self._nodes_broadcasted)
+
+    @property
     def tests(self):
         return self._tests
 
