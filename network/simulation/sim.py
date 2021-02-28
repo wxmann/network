@@ -58,19 +58,20 @@ def test(p):
 
 
 def run_simulations(*sims, to=None, workers=None, reproducible=True):
-    def run_single_sim(sim):
-        ctx = fix_random if reproducible else contextlib.nullcontext
-        with ctx():
-            sim.path(to)
-            return sim
-
     if len(sims) == 1:
-        return run_single_sim(sims[0])
+        return run_single_sim(sims[0], to, reproducible)
 
     if workers is None:
         workers = min(len(sims), 4)
     pool = ProcessingPool(workers)
     return pool.map(run_single_sim, sims)
+
+
+def run_single_sim(sim, to=None, reproducible=True):
+    ctx = fix_random if reproducible else contextlib.nullcontext
+    with ctx():
+        sim.path(to)
+        return sim
 
 
 def create_runner(before=None, after=None):
